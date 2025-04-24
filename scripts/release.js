@@ -7,7 +7,7 @@ function run(cmd) {
   console.log(`🔧 Ejecutando: ${cmd}`);
   execSync(cmd, {
     stdio: "inherit",
-    env: { ...process.env } // 🔥 Heredamos GITHUB_TOKEN y más
+    env: { ...process.env } // 🔥 Asegura visibilidad de GITHUB_TOKEN
   });
 }
 
@@ -58,17 +58,17 @@ function orchestrateRelease(releaseType = "patch") {
   run(`git merge --strategy=recursive -X theirs --no-edit ${releaseBranch}`);
   run(`git push origin master`);
 
-  // 4. Crear y subir tag a Git
+  // 4. Crear y subir el tag
   const tagName = `v${baseVersion}`;
   run(`git tag ${tagName}`);
   run(`git push origin ${tagName}`);
 
-  // 5. Crear Release en GitHub
+  // 5. Crear Release GitHub desde master
   run(
-    `npx dotenv -- release-it --no-npm --config .release-it.master.ts --dry-run --increment false --version ${baseVersion} --verbose`
+    `npx release-it --no-npm --config .release-it.master.ts --ci --increment false --release-version ${baseVersion}`
   );
 
-  // 6. Eliminar rama release/*
+  // 6. Borrar rama release/*
   run(`git branch -d ${releaseBranch}`);
 
   // 7. Bump siguiente versión -dev en develop
@@ -90,9 +90,9 @@ function orchestrateRelease(releaseType = "patch") {
   run(`git tag ${devTag}`);
   run(`git push origin ${devTag}`);
 
-  // 9. Crear prerelease en GitHub
+  // 9. Crear Pre-release GitHub desde develop
   run(
-    `npx dotenv -- release-it --no-npm --config .release-it.dev.ts --dry-run --increment false --version ${nextDevVersion} --verbose`
+    `npx release-it --no-npm --config .release-it.dev.ts --ci --increment false --release-version ${nextDevVersion}`
   );
 
   console.log(
