@@ -30,7 +30,7 @@ function releaseMaster(prodVersion) {
     );
   }
 
-  run(`npx release-it --config .release-it.master.json --ci`);
+  run(`npx release-it --no-npm --config .release-it.master.json --ci`);
 }
 
 function releaseDevelop(nextDevVersion) {
@@ -50,7 +50,7 @@ function releaseDevelop(nextDevVersion) {
     );
   }
 
-  run(`npx release-it --config .release-it.dev.json --ci`);
+  run(`npx release-it --no-npm --config .release-it.dev.json --ci`);
 }
 
 function orchestrateRelease(releaseType = "patch") {

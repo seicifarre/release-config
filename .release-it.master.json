@@ -17,5 +17,8 @@
   "github": {
     "release": true,
     "preRelease": false
+  },
+  "npm": {
+    "publish": false
   }
 }
