@@ -1,7 +1,7 @@
-import { execSync } from "child_process";
-import { readFileSync } from "fs";
-import semver from "semver";
 import "dotenv/config";
+import { execSync } from "child_process";
+import { readFileSync, existsSync } from "fs";
+import semver from "semver";
 
 function run(cmd) {
   console.log(`🔧 Ejecutando: ${cmd}`);
@@ -13,44 +13,11 @@ function getCurrentVersion() {
   return pkg.version;
 }
 
-function releaseMaster(prodVersion) {
-  console.log(`🚀 Release en master: v${prodVersion}`);
-  run(`git checkout master`);
-  run(`git pull origin master`);
-
-  const current = getCurrentVersion();
-  if (current !== prodVersion) {
-    run(`npm version ${prodVersion} --no-git-tag-version`);
-    run(`git add package.json package-lock.json`);
-    run(`git commit -m "release: v${prodVersion}"`);
-    run(`git push origin master`);
-  } else {
-    console.log(
-      `⚠️ Ya estás en la versión ${prodVersion}, no se realiza bump.`
-    );
+function addFilesToCommit() {
+  run(`git add package.json`);
+  if (existsSync("package-lock.json")) {
+    run(`git add package-lock.json`);
   }
-
-  run(`npx release-it --no-npm --config .release-it.master.json --ci`);
-}
-
-function releaseDevelop(nextDevVersion) {
-  console.log(`🧪 Release en develop: v${nextDevVersion}`);
-  run(`git checkout develop`);
-  run(`git pull origin develop`);
-
-  const current = getCurrentVersion();
-  if (current !== nextDevVersion) {
-    run(`npm version ${nextDevVersion} --no-git-tag-version`);
-    run(`git add package.json package-lock.json`);
-    run(`git commit -m "chore: bump dev version to ${nextDevVersion}"`);
-    run(`git push origin develop`);
-  } else {
-    console.log(
-      `⚠️ develop ya tiene la versión ${nextDevVersion}, no se realiza bump.`
-    );
-  }
-
-  run(`npx release-it --no-npm --config .release-it.dev.json --ci`);
 }
 
 function orchestrateRelease(releaseType = "patch") {
@@ -65,13 +32,52 @@ function orchestrateRelease(releaseType = "patch") {
 
   const baseVersion = currentVersionRaw.replace("-dev", "");
   const nextDevVersion = semver.inc(baseVersion, releaseType) + "-dev";
-
-  releaseMaster(baseVersion);
-  releaseDevelop(nextDevVersion);
+  const releaseBranch = `release/${baseVersion}`;
 
   console.log(
-    `✅ Release completado: ${baseVersion} (master) → ${nextDevVersion} (develop)`
+    `🔑 GITHUB_TOKEN detected:`,
+    process.env.GITHUB_TOKEN ? "Yes ✅" : "No ❌"
   );
+
+  // 1. Crea release/x.y.z desde develop
+  run(`git checkout develop`);
+  run(`git pull origin develop`);
+  run(`git checkout -b ${releaseBranch}`);
+
+  // 2. Setea versión release
+  run(`npm version ${baseVersion} --no-git-tag-version`);
+  addFilesToCommit();
+  run(`git commit -m "release: v${baseVersion}"`);
+  run(`git push origin ${releaseBranch}`);
+
+  // 3. Release en GitHub
+  run(`npx release-it --no-npm --config .release-it.master.json --ci`);
+
+  // 4. Merge en master
+  run(`git checkout master`);
+  run(`git pull origin master`);
+  run(`git merge --no-ff ${releaseBranch}`);
+  run(`git push origin master`);
+
+  // 5. Merge en develop
+  run(`git checkout develop`);
+  run(`git merge --no-ff ${releaseBranch}`);
+  run(`git push origin develop`);
+
+  // 6. Elimina la rama release/*
+  run(`git branch -d ${releaseBranch}`);
+  run(`git push origin --delete ${releaseBranch}`);
+
+  // 7. Bump siguiente versión dev en develop
+  run(`npm version ${nextDevVersion} --no-git-tag-version`);
+  addFilesToCommit();
+  run(`git commit -m "chore: bump dev version to ${nextDevVersion}"`);
+  run(`git push origin develop`);
+
+  // 8. Pre-release en GitHub para develop
+  run(`npx release-it --no-npm --config .release-it.dev.json --ci`);
+
+  console.log(`✅ Release finalizado: ${baseVersion} → ${nextDevVersion}`);
 }
 
 const releaseType = process.argv[2] || "patch";
@@ -79,7 +85,5 @@ if (!["patch", "minor", "major"].includes(releaseType)) {
   console.error("❌ Tipo de release no válido. Usa: patch, minor o major");
   process.exit(1);
 }
-
-console.log("🔑 GITHUB_TOKEN detected:", process.env.GITHUB_TOKEN ? "Yes ✅" : "No ❌");
 
 orchestrateRelease(releaseType);
