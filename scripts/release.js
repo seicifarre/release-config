@@ -1,6 +1,7 @@
 import { execSync } from "child_process";
 import { readFileSync } from "fs";
 import semver from "semver";
+import "dotenv/config";
 
 function run(cmd) {
   console.log(`🔧 Ejecutando: ${cmd}`);
@@ -24,7 +25,9 @@ function releaseMaster(prodVersion) {
     run(`git commit -m "release: v${prodVersion}"`);
     run(`git push origin master`);
   } else {
-    console.log(`⚠️ Ya estás en la versión ${prodVersion}, no se realiza bump.`);
+    console.log(
+      `⚠️ Ya estás en la versión ${prodVersion}, no se realiza bump.`
+    );
   }
 
   run(`npx release-it --config .release-it.master.json --ci`);
@@ -42,7 +45,9 @@ function releaseDevelop(nextDevVersion) {
     run(`git commit -m "chore: bump dev version to ${nextDevVersion}"`);
     run(`git push origin develop`);
   } else {
-    console.log(`⚠️ develop ya tiene la versión ${nextDevVersion}, no se realiza bump.`);
+    console.log(
+      `⚠️ develop ya tiene la versión ${nextDevVersion}, no se realiza bump.`
+    );
   }
 
   run(`npx release-it --config .release-it.dev.json --ci`);
@@ -74,5 +79,7 @@ if (!["patch", "minor", "major"].includes(releaseType)) {
   console.error("❌ Tipo de release no válido. Usa: patch, minor o major");
   process.exit(1);
 }
+
+console.log("🔑 GITHUB_TOKEN detected:", process.env.GITHUB_TOKEN ? "Yes ✅" : "No ❌");
 
 orchestrateRelease(releaseType);
