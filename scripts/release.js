@@ -21,7 +21,7 @@ function releaseMaster(prodVersion) {
   const current = getCurrentVersion();
   if (current !== prodVersion) {
     run(`npm version ${prodVersion} --no-git-tag-version`);
-    run(`git add package.json`);
+    run(`git add package.json package-lock.json`);
     run(`git commit -m "release: v${prodVersion}"`);
     run(`git push origin master`);
   } else {
@@ -41,7 +41,7 @@ function releaseDevelop(nextDevVersion) {
   const current = getCurrentVersion();
   if (current !== nextDevVersion) {
     run(`npm version ${nextDevVersion} --no-git-tag-version`);
-    run(`git add package.json`);
+    run(`git add package.json package-lock.json`);
     run(`git commit -m "chore: bump dev version to ${nextDevVersion}"`);
     run(`git push origin develop`);
   } else {
