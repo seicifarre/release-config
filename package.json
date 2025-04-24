@@ -1,13 +1,13 @@
 {
   "name": "release-config",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Automatización de releases para entorno con ramas master y develop usando release-it",
   "type": "module",
   "scripts": {
     "release": "node scripts/release.js"
   },
   "devDependencies": {
-    "@release-it/bumper": "7.0.5",
+    "dotenv": "16.5.0",
     "@release-it/conventional-changelog": "10.0.1",
     "release-it": "19.0.1",
     "semver": "7.7.1"
