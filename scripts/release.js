@@ -16,10 +16,17 @@ function releaseMaster(prodVersion) {
   console.log(`🚀 Release en master: v${prodVersion}`);
   run(`git checkout master`);
   run(`git pull origin master`);
-  run(`npm version ${prodVersion} --no-git-tag-version`);
-  run(`git add package.json`);
-  run(`git commit -m "release: v${prodVersion}"`);
-  run(`git push origin master`);
+
+  const current = getCurrentVersion();
+  if (current !== prodVersion) {
+    run(`npm version ${prodVersion} --no-git-tag-version`);
+    run(`git add package.json`);
+    run(`git commit -m "release: v${prodVersion}"`);
+    run(`git push origin master`);
+  } else {
+    console.log(`⚠️ Ya estás en la versión ${prodVersion}, no se realiza bump.`);
+  }
+
   run(`npx release-it --config .release-it.master.json --ci`);
 }
 
@@ -27,10 +34,17 @@ function releaseDevelop(nextDevVersion) {
   console.log(`🧪 Release en develop: v${nextDevVersion}`);
   run(`git checkout develop`);
   run(`git pull origin develop`);
-  run(`npm version ${nextDevVersion} --no-git-tag-version`);
-  run(`git add package.json`);
-  run(`git commit -m "chore: bump dev version to ${nextDevVersion}"`);
-  run(`git push origin develop`);
+
+  const current = getCurrentVersion();
+  if (current !== nextDevVersion) {
+    run(`npm version ${nextDevVersion} --no-git-tag-version`);
+    run(`git add package.json`);
+    run(`git commit -m "chore: bump dev version to ${nextDevVersion}"`);
+    run(`git push origin develop`);
+  } else {
+    console.log(`⚠️ develop ya tiene la versión ${nextDevVersion}, no se realiza bump.`);
+  }
+
   run(`npx release-it --config .release-it.dev.json --ci`);
 }
 
