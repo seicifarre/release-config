@@ -18,5 +18,7 @@
     "release": true,
     "preRelease": true
   },
-  "npm": false
+  "npm": {
+    "publish": false
+  }
 }
