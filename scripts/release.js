@@ -39,26 +39,28 @@ function orchestrateRelease(releaseType = "patch") {
     process.env.GITHUB_TOKEN ? "Yes ✅" : "No ❌"
   );
 
-  // 1. Crea release/x.y.z desde develop
+  // 1. Crear release/x.y.z desde develop
   run(`git checkout develop`);
   run(`git pull origin develop`);
   run(`git checkout -b ${releaseBranch}`);
 
-  // 2. Bump versión estable
+  // 2. Bump versión de producción
   run(`npm version ${baseVersion} --no-git-tag-version`);
   addFilesToCommit();
   run(`git commit -m "release: v${baseVersion}"`);
 
-  // 3. Merge a master con estrategia automática
+  // 3. Merge a master
   run(`git checkout master`);
   run(`git pull origin master`);
   run(`git merge --strategy=recursive -X theirs --no-edit ${releaseBranch}`);
   run(`git push origin master`);
 
-  // 4. Release en GitHub desde master
-  run(`npx release-it --no-npm --config .release-it.master.json --ci`);
+  // 4. Release GitHub desde master
+  run(
+    `npx release-it --no-npm --config .release-it.master.json --ci --increment false --version ${baseVersion}`
+  );
 
-  // 5. Borra la rama release/*
+  // 5. Borrar la rama release/*
   run(`git branch -d ${releaseBranch}`);
 
   // 6. Bump siguiente versión -dev en develop
@@ -75,8 +77,10 @@ function orchestrateRelease(releaseType = "patch") {
     );
   }
 
-  // 7. Pre-release desde develop
-  run(`npx release-it --no-npm --config .release-it.dev.json --ci`);
+  // 7. Pre-release GitHub desde develop
+  run(
+    `npx release-it --no-npm --config .release-it.dev.json --ci --increment false --version ${nextDevVersion}`
+  );
 
   console.log(
     `✅ Release completado: ${baseVersion} (master) → ${nextDevVersion} (develop)`
