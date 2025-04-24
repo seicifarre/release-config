@@ -5,7 +5,10 @@ import semver from "semver";
 
 function run(cmd) {
   console.log(`🔧 Ejecutando: ${cmd}`);
-  execSync(cmd, { stdio: "inherit" });
+  execSync(cmd, {
+    stdio: "inherit",
+    env: { ...process.env } // 🔥 Heredamos GITHUB_TOKEN y más
+  });
 }
 
 function getCurrentVersion() {
@@ -55,17 +58,17 @@ function orchestrateRelease(releaseType = "patch") {
   run(`git merge --strategy=recursive -X theirs --no-edit ${releaseBranch}`);
   run(`git push origin master`);
 
-  // 4. Crear y subir el tag en Git
+  // 4. Crear y subir tag a Git
   const tagName = `v${baseVersion}`;
   run(`git tag ${tagName}`);
   run(`git push origin ${tagName}`);
 
-  // 5. Release GitHub desde master
+  // 5. Crear Release en GitHub
   run(
     `npx release-it --no-npm --config .release-it.master.json --ci --increment false --version ${baseVersion}`
   );
 
-  // 6. Borrar la rama release/*
+  // 6. Eliminar rama release/*
   run(`git branch -d ${releaseBranch}`);
 
   // 7. Bump siguiente versión -dev en develop
@@ -82,12 +85,12 @@ function orchestrateRelease(releaseType = "patch") {
     );
   }
 
-  // 8. Crear y subir tag para prerelease en develop
+  // 8. Crear y subir tag -dev
   const devTag = `v${nextDevVersion}`;
   run(`git tag ${devTag}`);
   run(`git push origin ${devTag}`);
 
-  // 9. Pre-release GitHub desde develop
+  // 9. Crear prerelease en GitHub
   run(
     `npx release-it --no-npm --config .release-it.dev.json --ci --increment false --version ${nextDevVersion}`
   );
