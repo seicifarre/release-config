@@ -65,7 +65,7 @@ function orchestrateRelease(releaseType = "patch") {
 
   // 5. Crear Release en GitHub
   run(
-    `npx -- release-it --no-npm --config .release-it.master.json --ci --increment false --version ${baseVersion} --verbose`
+    `npx -- release-it --no-npm --config .release-it.master.ts --ci --increment false --version ${baseVersion} --verbose`
   );
 
   // 6. Eliminar rama release/*
@@ -92,7 +92,7 @@ function orchestrateRelease(releaseType = "patch") {
 
   // 9. Crear prerelease en GitHub
   run(
-    `npx -- release-it --no-npm --config .release-it.dev.json --ci --increment false --version ${nextDevVersion} --verbose`
+    `npx -- release-it --no-npm --config .release-it.dev.ts --ci --increment false --version ${nextDevVersion} --verbose`
   );
 
   console.log(
