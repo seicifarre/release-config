@@ -44,22 +44,22 @@ function orchestrateRelease(releaseType = "patch") {
   run(`git pull origin develop`);
   run(`git checkout -b ${releaseBranch}`);
 
-  // 2. Setea versión release
+  // 2. Setea versión de producción
   run(`npm version ${baseVersion} --no-git-tag-version`);
   addFilesToCommit();
   run(`git commit -m "release: v${baseVersion}"`);
   run(`git push origin ${releaseBranch}`);
 
-  // 3. Release en GitHub
-  run(`npx release-it --no-npm --config .release-it.master.json --ci`);
-
-  // 4. Merge en master
+  // 3. Merge a master
   run(`git checkout master`);
   run(`git pull origin master`);
   run(`git merge --no-ff ${releaseBranch}`);
   run(`git push origin master`);
 
-  // 5. Merge en develop
+  // 4. Release oficial desde master
+  run(`npx release-it --no-npm --config .release-it.master.json --ci`);
+
+  // 5. Merge a develop
   run(`git checkout develop`);
   run(`git merge --no-ff ${releaseBranch}`);
   run(`git push origin develop`);
@@ -68,16 +68,18 @@ function orchestrateRelease(releaseType = "patch") {
   run(`git branch -d ${releaseBranch}`);
   run(`git push origin --delete ${releaseBranch}`);
 
-  // 7. Bump siguiente versión dev en develop
+  // 7. Bump siguiente versión -dev en develop
   run(`npm version ${nextDevVersion} --no-git-tag-version`);
   addFilesToCommit();
   run(`git commit -m "chore: bump dev version to ${nextDevVersion}"`);
   run(`git push origin develop`);
 
-  // 8. Pre-release en GitHub para develop
+  // 8. Pre-release desde develop
   run(`npx release-it --no-npm --config .release-it.dev.json --ci`);
 
-  console.log(`✅ Release finalizado: ${baseVersion} → ${nextDevVersion}`);
+  console.log(
+    `✅ Release finalizado: ${baseVersion} (master) → ${nextDevVersion} (develop)`
+  );
 }
 
 const releaseType = process.argv[2] || "patch";
