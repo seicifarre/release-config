@@ -69,7 +69,7 @@ function orchestrateRelease(releaseType = "patch") {
 
   // 5. Crear Release GitHub desde master
   run(
-    `npx release-it --config ${configPathMaster} --ci --increment false --release-version ${baseVersion}`
+    `npx dotenv -- release-it --config ${configPathMaster} --ci --increment false --release-version ${baseVersion}`
   );
 
   // 6. Borrar rama release/*
@@ -101,7 +101,7 @@ function orchestrateRelease(releaseType = "patch") {
 
   // 10. Crear Pre-release GitHub desde develop
   run(
-    `npx release-it --config ${configPathDev} --ci --increment false --release-version ${nextDevVersion}`
+    `npx dotenv -- release-it --config ${configPathDev} --ci --increment false --release-version ${nextDevVersion}`
   );
 
   console.log(
