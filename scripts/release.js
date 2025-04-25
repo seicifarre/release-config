@@ -22,36 +22,33 @@ function addFilesToCommit() {
   if (existsSync("CHANGELOG.md")) run(`git add CHANGELOG.md`);
 }
 
-function getLastTag(branch, matchPattern) {
+function getLastTag(branch) {
   try {
-    // 1. Obtenemos todos los tags que matchean el patrón
-    const allTags = execSync(`git tag --list "${matchPattern}"`, {
+    // Checkout al branch temporalmente (no cambiamos el working copy)
+    const currentBranch = execSync(`git rev-parse --abbrev-ref HEAD`, {
       encoding: "utf8"
-    })
-      .split("\n")
-      .map((tag) => tag.trim())
-      .filter((tag) => tag); // Nos aseguramos de quitar líneas vacías
+    }).trim();
 
-    if (allTags.length === 0) {
-      console.warn(`⚠️ No tags matching pattern "${matchPattern}".`);
-      return null;
+    // Guardamos dónde estamos
+    if (currentBranch !== branch) {
+      execSync(`git checkout ${branch}`, { stdio: "ignore" });
     }
 
-    // 2. Verificamos en qué branch está cada tag
-    for (const tag of allTags.reverse()) {
-      // Recorremos del último al primero
-      const branches = execSync(`git branch --contains refs/tags/${tag}`, {
-        encoding: "utf8"
-      });
-      if (branches.includes(branch)) {
-        return tag;
-      }
+    // Ahora en ese branch: obtenemos el último tag
+    const tag = execSync(`git describe --tags --abbrev=0`, {
+      encoding: "utf8"
+    }).trim();
+
+    // Volvemos a donde estábamos
+    if (currentBranch !== branch) {
+      execSync(`git checkout ${currentBranch}`, { stdio: "ignore" });
     }
 
-    console.warn(`⚠️ No matching tag found in branch "${branch}".`);
-    return null;
+    return tag;
   } catch (error) {
-    console.warn(`⚠️ Error while searching for tag: ${error.message}`);
+    console.warn(
+      `⚠️ Failed to get last tag on branch "${branch}": ${error.message}`
+    );
     return null;
   }
 }
@@ -92,7 +89,7 @@ function orchestrateRelease(releaseType = "release") {
 
   // 2. Bump to stable version and generate changelog
   run(`npm version ${baseVersion} --no-git-tag-version`);
-  const lastStableTag = getLastTag("master", "v[0-9]*.[0-9]*.[0-9]*");
+  const lastStableTag = getLastTag("master");
   const changelogStable = lastStableTag
     ? isWin
       ? `set CHANGELOG_FROM=${lastStableTag} && node scripts/generate-changelog.js`
@@ -157,7 +154,7 @@ function orchestrateRelease(releaseType = "release") {
   }
 
   // 8. Generate changelog in develop
-  const lastDevTagFinal = getLastTag("develop", "v*-dev");
+  const lastDevTagFinal = getLastTag("develop");
   const changelogDevFinal = lastDevTagFinal
     ? isWin
       ? `set CHANGELOG_FROM=${lastDevTagFinal} && node scripts/generate-changelog.js`
