@@ -111,6 +111,9 @@ function orchestrateRelease(releaseType = "release") {
   const runReleaseMaster = isWin
     ? `set RELEASE_VERSION=${baseVersion} && npm run release:master`
     : `RELEASE_VERSION=${baseVersion} npm run release:master`;
+  // Crear y push el tag manualmente
+  run(`git tag v${baseVersion}`);
+  run(`git push origin v${baseVersion}`);
   run(runReleaseMaster);
 
   // 5. Delete release branch
