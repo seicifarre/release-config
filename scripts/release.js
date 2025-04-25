@@ -57,7 +57,7 @@ function orchestrateRelease(releaseType = "patch") {
   run(`git checkout master`);
   run(`git pull origin master`);
   try {
-    run(`git merge --no-ff ${releaseBranch}`);
+    run(`git merge --no-ff --no-edit ${releaseBranch}`);
   } catch {
     // En caso de conflicto, sobreescribe con archivos de release
     console.log(
@@ -82,7 +82,7 @@ function orchestrateRelease(releaseType = "patch") {
   // 6. Merge master de vuelta a develop
   run(`git checkout develop`);
   run(`git pull origin develop`);
-  run(`git merge --no-ff master --no-edit`);
+  run(`git merge --no-ff --no-edit master`);
   run(`git push origin develop`);
 
   // 7. Bump siguiente versión -dev
