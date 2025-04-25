@@ -4,7 +4,8 @@
     "requireCleanWorkingDir": true,
     "commitMessage": "release: v${version}",
     "tagName": "v${version}",
-    "requireUpstream": true
+    "requireUpstream": false,
+    "requireCommits": false
   },
   "github": {
     "release": true,
