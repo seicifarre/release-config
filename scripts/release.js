@@ -22,36 +22,6 @@ function addFilesToCommit() {
   if (existsSync("CHANGELOG.md")) run(`git add CHANGELOG.md`);
 }
 
-function getLastTag(matchPattern) {
-  try {
-    const allTags = execSync(`git tag --list "${matchPattern}"`, {
-      encoding: "utf8"
-    })
-      .split("\n")
-      .map((tag) => tag.trim())
-      .filter((tag) => tag);
-
-    if (allTags.length > 0) {
-      for (const tag of allTags.reverse()) {
-        if (
-          (matchPattern.includes("-dev") && tag.endsWith("-dev")) ||
-          (!matchPattern.includes("-dev") && !tag.endsWith("-dev"))
-        ) {
-          return tag;
-        }
-      }
-    }
-
-    console.warn(
-      `⚠️ No tag found matching "${matchPattern}". Changelog will be generated from the beginning of history.`
-    );
-    return null;
-  } catch (error) {
-    console.warn(`⚠️ Error while searching for tag: ${error.message}`);
-    return null;
-  }
-}
-
 function orchestrateRelease(releaseType = "release") {
   if (!["release", "minor", "major"].includes(releaseType)) {
     console.error("❌ Invalid release type. Use: release, minor, or major.");
@@ -88,13 +58,6 @@ function orchestrateRelease(releaseType = "release") {
 
   // 2. Bump to stable version and generate changelog
   run(`npm version ${baseVersion} --no-git-tag-version`);
-  const lastStableTag = null;
-  const changelogStable = lastStableTag
-    ? isWin
-      ? `set CHANGELOG_FROM=${lastStableTag} && node scripts/generate-changelog.js`
-      : `CHANGELOG_FROM=${lastStableTag} node scripts/generate-changelog.js`
-    : `node scripts/generate-changelog.js`;
-  run(changelogStable);
   addFilesToCommit();
   run(`git commit -m "release: v${baseVersion}"`);
 
@@ -151,18 +114,6 @@ function orchestrateRelease(releaseType = "release") {
       `⚠️ Version ${nextDevVersion} already set on develop. Skipping bump.`
     );
   }
-
-  // 8. Generate changelog in develop
-  const lastDevTagFinal = null;
-  const changelogDevFinal = lastDevTagFinal
-    ? isWin
-      ? `set CHANGELOG_FROM=${lastDevTagFinal} && node scripts/generate-changelog.js`
-      : `CHANGELOG_FROM=${lastDevTagFinal} node scripts/generate-changelog.js`
-    : `node scripts/generate-changelog.js`;
-  run(changelogDevFinal);
-  run(`git add CHANGELOG.md`);
-  run(`git commit -m "docs: update changelog for ${nextDevVersion}"`);
-  run(`git push origin develop`);
 
   // 9. Create pre-release from develop
   const runReleaseDev = isWin
