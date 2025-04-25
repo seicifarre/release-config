@@ -37,6 +37,7 @@ function orchestrateRelease(releaseType = "patch") {
   const baseVersion = currentVersionRaw.replace("-dev", "");
   const nextDevVersion = semver.inc(baseVersion, releaseType) + "-dev";
   const releaseBranch = `release/${baseVersion}`;
+  const isWin = process.platform === "win32";
 
   console.log(
     `🔑 GITHUB_TOKEN detected:`,
@@ -75,8 +76,11 @@ function orchestrateRelease(releaseType = "patch") {
   run(`git tag ${tagName}`);
   run(`git push origin ${tagName}`);
 
-  // 5. Crear Release GitHub desde master via npm script
-  run(`set RELEASE_VERSION=${baseVersion} && npm run release:master`);
+  // 5. Crear Release GitHub desde master via npm script con RELEASE_VERSION
+  const runReleaseMaster = isWin
+    ? `set RELEASE_VERSION=${baseVersion} && npm run release:master`
+    : `RELEASE_VERSION=${baseVersion} npm run release:master`;
+  run(runReleaseMaster);
 
   // 6. Borrar rama release/*
   run(`git branch -d ${releaseBranch}`);
@@ -105,8 +109,11 @@ function orchestrateRelease(releaseType = "patch") {
   run(`git tag ${devTag}`);
   run(`git push origin ${devTag}`);
 
-  // 10. Crear Pre-release desde develop via npm script
-  run(`set RELEASE_VERSION=${nextDevVersion} && npm run release:dev`);
+  // 10. Crear Pre-release desde develop via npm script con RELEASE_VERSION
+  const runReleaseDev = isWin
+    ? `set RELEASE_VERSION=${nextDevVersion} && npm run release:dev`
+    : `RELEASE_VERSION=${nextDevVersion} npm run release:dev`;
+  run(runReleaseDev);
 
   console.log(
     `✅ Release completado: ${baseVersion} (master) → ${nextDevVersion} (develop)`
