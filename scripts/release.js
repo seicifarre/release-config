@@ -76,7 +76,7 @@ function orchestrateRelease(releaseType = "patch") {
   run(`git push origin ${tagName}`);
 
   // 5. Crear Release GitHub desde master via npm script
-  run(`npm run release:master -- --release-version=${baseVersion}`);
+  run(`set RELEASE_VERSION=${baseVersion} && npm run release:master`);
 
   // 6. Borrar rama release/*
   run(`git branch -d ${releaseBranch}`);
@@ -106,7 +106,7 @@ function orchestrateRelease(releaseType = "patch") {
   run(`git push origin ${devTag}`);
 
   // 10. Crear Pre-release desde develop via npm script
-  run(`npm run release:dev -- --release-version=${nextDevVersion}`);
+  run(`set RELEASE_VERSION=${nextDevVersion} && npm run release:dev`);
 
   console.log(
     `✅ Release completado: ${baseVersion} (master) → ${nextDevVersion} (develop)`
