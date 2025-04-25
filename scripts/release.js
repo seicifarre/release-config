@@ -4,10 +4,10 @@ import { readFileSync, existsSync } from "fs";
 import semver from "semver";
 
 function run(cmd) {
-  console.log(`🔧 Ejecutando: ${cmd}`);
+  console.log(`🔧 Running: ${cmd}`);
   execSync(cmd, {
     stdio: "inherit",
-    env: { ...process.env } // 🔥 Asegura visibilidad de GITHUB_TOKEN
+    env: { ...process.env } // 🔥 Ensures visibility of GITHUB_TOKEN
   });
 }
 
@@ -28,7 +28,7 @@ function orchestrateRelease(releaseType = "patch") {
 
   if (!currentVersionRaw.endsWith("-dev")) {
     console.error(
-      "❌ La versión actual no contiene '-dev'. Asegúrate de estar en develop."
+      "❌ The current version does not contain '-dev'. Make sure you're in develop."
     );
     process.exit(1);
   }
@@ -48,25 +48,25 @@ function orchestrateRelease(releaseType = "patch") {
     process.env.GITHUB_TOKEN ? "Yes ✅" : "No ❌"
   );
 
-  // 1. Crear release/x.y.z desde develop
+  // 1. Create release/x.y.z from develop
   run(`git checkout develop`);
   run(`git pull origin develop`);
   run(`git checkout -b ${releaseBranch}`);
 
-  // 2. Bump versión estable
+  // 2. Bump stable version
   run(`npm version ${baseVersion} --no-git-tag-version`);
   addFilesToCommit();
   run(`git commit -m "release: v${baseVersion}"`);
 
-  // 3. Merge a master con preferencia por release/*
+  // 3. Merge to master with preference for release/*
   run(`git checkout master`);
   run(`git pull origin master`);
   try {
     run(`git merge --no-ff --no-edit ${releaseBranch}`);
   } catch {
-    // En caso de conflicto, sobreescribe con archivos de release
+    // In case of conflict, overwrite with release files
     console.log(
-      `⚠️ Conflicto detectado. Se aplicarán los archivos de ${releaseBranch} como resolución.`
+      `⚠️ Conflict detected. The files from ${releaseBranch} will be applied as a resolution.`
     );
     run(`git checkout ${releaseBranch} -- .`);
     run(
@@ -75,22 +75,22 @@ function orchestrateRelease(releaseType = "patch") {
   }
   run(`git push origin master`);
 
-  // 4. Crear Release GitHub desde master via npm script con RELEASE_VERSION
+  // 4. Create GitHub Release from master via npm script with RELEASE_VERSION
   const runReleaseMaster = isWin
     ? `set RELEASE_VERSION=${baseVersion} && npm run release:master`
     : `RELEASE_VERSION=${baseVersion} npm run release:master`;
   run(runReleaseMaster);
 
-  // 5. Borrar rama release/*
+  // 5. Delete branch release/*
   run(`git branch -d ${releaseBranch}`);
 
-  // 6. Merge master de vuelta a develop
+  // 6. Merge master back to develop
   run(`git checkout develop`);
   run(`git pull origin develop`);
   run(`git merge --no-ff --no-edit master`);
   run(`git push origin develop`);
 
-  // 7. Bump siguiente versión -dev
+  // 7. Bump next version -dev
   const current = getCurrentVersion();
   if (current !== nextDevVersion) {
     run(`npm version ${nextDevVersion} --no-git-tag-version`);
@@ -99,33 +99,33 @@ function orchestrateRelease(releaseType = "patch") {
     run(`git push origin develop`);
   } else {
     console.log(
-      `⚠️ develop ya tiene la versión ${nextDevVersion}, no se realiza bump.`
+      `⚠️ develop already has version ${nextDevVersion}, no bump is performed.`
     );
   }
 
-  // 8. Crear Pre-release desde develop via npm script con RELEASE_VERSION
+  // 8. Create Pre-release from develop via npm script with RELEASE_VERSION
   const runReleaseDev = isWin
     ? `set RELEASE_VERSION=${nextDevVersion} && npm run release:dev`
     : `RELEASE_VERSION=${nextDevVersion} npm run release:dev`;
   run(runReleaseDev);
 
-  // 9. Validar que package.json conserva la versión correcta -dev
+  // 9. Validate that package.json retains the correct version -dev
   const versionAfter = getCurrentVersion();
   if (versionAfter !== nextDevVersion) {
     console.error(
-      `❌ ERROR: Versión en package.json fue modificada inesperadamente. Esperado: ${nextDevVersion}, actual: ${versionAfter}`
+      `❌ ERROR: Version in package.json was changed unexpectedly. Expected: ${nextDevVersion}, Current: ${versionAfter}`
     );
     process.exit(1);
   }
 
   console.log(
-    `✅ Release completado: ${baseVersion} (master) → ${nextDevVersion} (develop)`
+    `✅ Release completed: ${currentVersionRaw} (develop) → ${baseVersion} (master) → ${nextDevVersion} (develop)`
   );
 }
 
 const releaseType = process.argv[2] || "release";
 if (!["release", "minor", "major"].includes(releaseType)) {
-  console.error("❌ Tipo de release no válido. Usa: release, minor o emajor");
+  console.error("❌ Invalid release type. Use: release, minor or major");
   process.exit(1);
 }
 
