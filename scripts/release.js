@@ -71,7 +71,8 @@ function orchestrateRelease(releaseType = "release") {
 
   // 2. Bump to stable version and generate changelog
   run(`npm version ${baseVersion} --no-git-tag-version`);
-  const lastStableTag = getLastTag("v[0-9]*.[0-9]*.[0-9]*");
+  let lastStableTag = getLastTag("v[0-9]*.[0-9]*.[0-9]*");
+  lastStableTag = lastStableTag?.includes("-") ? baseVersion : lastStableTag;
   const changelogStable = lastStableTag
     ? isWin
       ? `set CHANGELOG_FROM=${lastStableTag} && node scripts/generate-changelog.js`
@@ -111,9 +112,6 @@ function orchestrateRelease(releaseType = "release") {
   const runReleaseMaster = isWin
     ? `set RELEASE_VERSION=${baseVersion} && npm run release:master`
     : `RELEASE_VERSION=${baseVersion} npm run release:master`;
-  // Crear y push el tag manualmente
-  run(`git tag v${baseVersion}`);
-  run(`git push origin v${baseVersion}`);
   run(runReleaseMaster);
 
   // 5. Delete release branch

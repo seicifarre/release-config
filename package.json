@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "release": "node scripts/release.js",
-    "release:master": "dotenv -- release-it --ci --no-increment --no-git.requireCommits --no-git.requireUpstream",
+    "release:master": "dotenv -- release-it --ci --no-increment",
     "release:dev": "dotenv -- release-it --ci --no-increment --preRelease",
     "changelog": "node scripts/generate-changelog.js"
   },
