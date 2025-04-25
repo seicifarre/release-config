@@ -13,7 +13,6 @@
   },
   "devDependencies": {
     "@release-it/bumper": "7.0.5",
-    "@release-it/conventional-changelog": "10.0.1",
     "dotenv-cli": "8.0.0",
     "release-it": "19.0.1",
     "semver": "7.7.1"

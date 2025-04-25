@@ -18,14 +18,12 @@ function getCurrentVersion() {
 
 function addFilesToCommit() {
   run(`git add package.json`);
-  if (existsSync("package-lock.json")) {
-    run(`git add package-lock.json`);
-  }
+  if (existsSync("package-lock.json")) run(`git add package-lock.json`);
+  if (existsSync("CHANGELOG.md")) run(`git add CHANGELOG.md`);
 }
 
 function orchestrateRelease(releaseType = "patch") {
   const currentVersionRaw = getCurrentVersion();
-
   if (!currentVersionRaw.endsWith("-dev")) {
     console.error(
       "❌ The current version does not contain '-dev'. Make sure you're in develop."
@@ -53,8 +51,14 @@ function orchestrateRelease(releaseType = "patch") {
   run(`git pull origin develop`);
   run(`git checkout -b ${releaseBranch}`);
 
-  // 2. Bump stable version
+  // 2. Bump version + generate changelog on release branch
   run(`npm version ${baseVersion} --no-git-tag-version`);
+  const changelogDevRelease = isWin
+    ? `set CHANGELOG_FROM=${execSync("git describe --abbrev=0 --match v*-dev")
+        .toString()
+        .trim()} && node scripts/generate-changelog.js`
+    : `CHANGELOG_FROM=$(git describe --abbrev=0 --match 'v*-dev') node scripts/generate-changelog.js`;
+  run(changelogDevRelease);
   addFilesToCommit();
   run(`git commit -m "release: v${baseVersion}"`);
 
@@ -103,13 +107,24 @@ function orchestrateRelease(releaseType = "patch") {
     );
   }
 
-  // 8. Create Pre-release from develop via npm script with RELEASE_VERSION
+  // 8. Generate changelog in develop (post bump)
+  const changelogDevFinal = isWin
+    ? `set CHANGELOG_FROM=${execSync("git describe --abbrev=0 --match v*-dev")
+        .toString()
+        .trim()} && node scripts/generate-changelog.js`
+    : `CHANGELOG_FROM=$(git describe --abbrev=0 --match 'v*-dev') node scripts/generate-changelog.js`;
+  run(changelogDevFinal);
+  run(`git add CHANGELOG.md`);
+  run(`git commit -m "docs: update changelog for ${nextDevVersion}"`);
+  run(`git push origin develop`);
+
+  // 9. Create Pre-release from develop via npm script with RELEASE_VERSION
   const runReleaseDev = isWin
     ? `set RELEASE_VERSION=${nextDevVersion} && npm run release:dev`
     : `RELEASE_VERSION=${nextDevVersion} npm run release:dev`;
   run(runReleaseDev);
 
-  // 9. Validate that package.json retains the correct version -dev
+  // 10. Validate that package.json retains the correct version -dev
   const versionAfter = getCurrentVersion();
   if (versionAfter !== nextDevVersion) {
     console.error(
