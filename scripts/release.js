@@ -1,5 +1,4 @@
 import "dotenv/config";
-import path from "path";
 import { execSync } from "child_process";
 import { readFileSync, existsSync } from "fs";
 import semver from "semver";
@@ -114,6 +113,15 @@ function orchestrateRelease(releaseType = "patch") {
     ? `set RELEASE_VERSION=${nextDevVersion} && npm run release:dev`
     : `RELEASE_VERSION=${nextDevVersion} npm run release:dev`;
   run(runReleaseDev);
+
+  // 11. Validar que package.json conserva la versión correcta -dev
+  const versionAfter = getCurrentVersion();
+  if (versionAfter !== nextDevVersion) {
+    console.error(
+      `❌ ERROR: Versión en package.json fue modificada inesperadamente. Esperado: ${nextDevVersion}, actual: ${versionAfter}`
+    );
+    process.exit(1);
+  }
 
   console.log(
     `✅ Release completado: ${baseVersion} (master) → ${nextDevVersion} (develop)`
