@@ -71,13 +71,13 @@ function orchestrateRelease(releaseType = "release") {
 
   // 2. Bump to stable version and generate changelog
   run(`npm version ${baseVersion} --no-git-tag-version`);
-  const lastStableTag = getLastTag("v[0-9]*.[0-9]*.[0-9]*");
-  const changelogStableRelease = lastStableTag
+  const lastDevTag = getLastTag("v*-dev");
+  const changelogDevRelease = lastDevTag
     ? isWin
-      ? `set CHANGELOG_FROM=${lastStableTag} && node scripts/generate-changelog.js`
-      : `CHANGELOG_FROM=${lastStableTag} node scripts/generate-changelog.js`
+      ? `set CHANGELOG_FROM=${lastDevTag} && node scripts/generate-changelog.js`
+      : `CHANGELOG_FROM=${lastDevTag} node scripts/generate-changelog.js`
     : `node scripts/generate-changelog.js`;
-  run(changelogStableRelease);
+  run(changelogDevRelease);
   addFilesToCommit();
   run(`git commit -m "release: v${baseVersion}"`);
 
