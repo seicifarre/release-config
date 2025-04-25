@@ -56,13 +56,13 @@ function orchestrateRelease(releaseType = "patch") {
   addFilesToCommit();
   run(`git commit -m "release: v${baseVersion}"`);
 
-  // 3. Merge a master con estrategia segura
+  // 3. Merge a master
   run(`git checkout master`);
   run(`git pull origin master`);
   run(`git merge --strategy=recursive -X theirs --no-edit ${releaseBranch}`);
   run(`git push origin master`);
 
-  // 4. Crear y subir el tag
+  // 4. Crear y subir tag
   const tagName = `v${baseVersion}`;
   run(`git tag ${tagName}`);
   run(`git push origin ${tagName}`);
@@ -75,8 +75,13 @@ function orchestrateRelease(releaseType = "patch") {
   // 6. Borrar rama release/*
   run(`git branch -d ${releaseBranch}`);
 
-  // 7. Bump siguiente versión -dev en develop
+  // 7. Merge master de vuelta a develop (antes del nuevo bump)
   run(`git checkout develop`);
+  run(`git pull origin develop`);
+  run(`git merge --no-ff master --no-edit`);
+  run(`git push origin develop`);
+
+  // 8. Bump siguiente versión -dev en develop
   const current = getCurrentVersion();
   if (current !== nextDevVersion) {
     run(`npm version ${nextDevVersion} --no-git-tag-version`);
@@ -89,12 +94,12 @@ function orchestrateRelease(releaseType = "patch") {
     );
   }
 
-  // 8. Crear y subir tag -dev
+  // 9. Crear y subir tag -dev
   const devTag = `v${nextDevVersion}`;
   run(`git tag ${devTag}`);
   run(`git push origin ${devTag}`);
 
-  // 9. Crear Pre-release GitHub desde develop
+  // 10. Crear Pre-release GitHub desde develop
   run(
     `npx release-it --config ${configPathDev} --ci --increment false --release-version ${nextDevVersion}`
   );
