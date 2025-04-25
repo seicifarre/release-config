@@ -1,12 +1,12 @@
 {
   "name": "release-config",
-  "version": "1.0.26-dev.0",
+  "version": "1.0.27-dev",
   "description": "Automatización de releases para entorno con ramas master y develop usando release-it",
   "type": "module",
   "scripts": {
     "release": "node scripts/release.js",
-    "release:master": "dotenv -- release-it --config .release-it.master.ts --ci --increment false",
-    "release:dev": "dotenv -- release-it --config .release-it.dev.ts --ci --increment false --preRelease"
+    "release:master": "dotenv -- release-it --config .release-it.master.ts --ci --no-increment",
+    "release:dev": "dotenv -- release-it --config .release-it.dev.ts --ci --no-increment"
   },
   "devDependencies": {
     "@release-it/conventional-changelog": "10.0.1",
