@@ -1,5 +1,7 @@
 # Changelog
 
+## [1.0.21](https://github.com/seicifarre/release-config/compare/v1.0.21-dev...vnull-dev) (2025-04-25)
+
 ## [1.0.20](https://github.com/seicifarre/release-config/compare/v1.0.20-dev...vnull-dev) (2025-04-25)
 
 ## [1.0.17-dev](https://github.com/seicifarre/release-config/compare/v1.0.17-dev...vnull-dev) (2025-04-25)
