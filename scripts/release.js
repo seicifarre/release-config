@@ -56,10 +56,21 @@ function orchestrateRelease(releaseType = "patch") {
   addFilesToCommit();
   run(`git commit -m "release: v${baseVersion}"`);
 
-  // 3. Merge a master
+  // 3. Merge a master con preferencia por release/*
   run(`git checkout master`);
   run(`git pull origin master`);
-  run(`git merge --strategy=recursive -X theirs --no-edit ${releaseBranch}`);
+  try {
+    run(`git merge --no-ff ${releaseBranch}`);
+  } catch {
+    // En caso de conflicto, sobreescribe con archivos de release
+    console.log(
+      `⚠️ Conflicto detectado. Se aplicarán los archivos de ${releaseBranch} como resolución.`
+    );
+    run(`git checkout ${releaseBranch} -- .`);
+    run(
+      `git commit -am "merge: resolved conflicts in favor of ${releaseBranch}"`
+    );
+  }
   run(`git push origin master`);
 
   // 4. Crear y subir tag
