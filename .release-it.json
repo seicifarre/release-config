@@ -7,7 +7,9 @@
   },
   "github": {
     "release": true,
-    "body": ""
+    "generateReleaseNotes": false,
+    "releaseName": "v${version}",
+    "body": "Release generated automatically."
   },
   "npm": {
     "publish": false
