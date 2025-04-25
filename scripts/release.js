@@ -34,7 +34,12 @@ function orchestrateRelease(releaseType = "patch") {
   }
 
   const baseVersion = currentVersionRaw.replace("-dev", "");
-  const nextDevVersion = semver.inc(baseVersion, releaseType, "dev", false);
+  const nextDevVersion = semver.inc(
+    baseVersion,
+    `pre${releaseType}`,
+    "dev",
+    false
+  );
   const releaseBranch = `release/${baseVersion}`;
   const isWin = process.platform === "win32";
 
@@ -118,9 +123,9 @@ function orchestrateRelease(releaseType = "patch") {
   );
 }
 
-const releaseType = process.argv[2] || "patch";
-if (!["patch", "minor", "major"].includes(releaseType)) {
-  console.error("❌ Tipo de release no válido. Usa: patch, minor o major");
+const releaseType = process.argv[2] || "release";
+if (!["release", "minor", "major"].includes(releaseType)) {
+  console.error("❌ Tipo de release no válido. Usa: release, minor o emajor");
   process.exit(1);
 }
 
