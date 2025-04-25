@@ -22,14 +22,32 @@ function addFilesToCommit() {
   if (existsSync("CHANGELOG.md")) run(`git add CHANGELOG.md`);
 }
 
-function getLastTag(matchPattern) {
+function getLastTag(branch) {
   try {
-    return execSync(`git describe --abbrev=0 --match ${matchPattern}`, {
+    // Checkout al branch temporalmente (no cambiamos el working copy)
+    const currentBranch = execSync(`git rev-parse --abbrev-ref HEAD`, {
       encoding: "utf8"
     }).trim();
-  } catch {
+
+    // Guardamos dónde estamos
+    if (currentBranch !== branch) {
+      execSync(`git checkout ${branch}`, { stdio: "ignore" });
+    }
+
+    // Ahora en ese branch: obtenemos el último tag
+    const tag = execSync(`git describe --tags --abbrev=0`, {
+      encoding: "utf8"
+    }).trim();
+
+    // Volvemos a donde estábamos
+    if (currentBranch !== branch) {
+      execSync(`git checkout ${currentBranch}`, { stdio: "ignore" });
+    }
+
+    return tag;
+  } catch (error) {
     console.warn(
-      `⚠️ No tag found matching "${matchPattern}". Changelog will be generated from the beginning of history.`
+      `⚠️ Failed to get last tag on branch "${branch}": ${error.message}`
     );
     return null;
   }
@@ -71,13 +89,13 @@ function orchestrateRelease(releaseType = "release") {
 
   // 2. Bump to stable version and generate changelog
   run(`npm version ${baseVersion} --no-git-tag-version`);
-  const lastDevTag = getLastTag("v*-dev");
-  const changelogDevRelease = lastDevTag
+  const lastStableTag = getLastTag("master");
+  const changelogStable = lastStableTag
     ? isWin
-      ? `set CHANGELOG_FROM=${lastDevTag} && node scripts/generate-changelog.js`
-      : `CHANGELOG_FROM=${lastDevTag} node scripts/generate-changelog.js`
+      ? `set CHANGELOG_FROM=${lastStableTag} && node scripts/generate-changelog.js`
+      : `CHANGELOG_FROM=${lastStableTag} node scripts/generate-changelog.js`
     : `node scripts/generate-changelog.js`;
-  run(changelogDevRelease);
+  run(changelogStable);
   addFilesToCommit();
   run(`git commit -m "release: v${baseVersion}"`);
 
@@ -111,9 +129,6 @@ function orchestrateRelease(releaseType = "release") {
   const runReleaseMaster = isWin
     ? `set RELEASE_VERSION=${baseVersion} && npm run release:master`
     : `RELEASE_VERSION=${baseVersion} npm run release:master`;
-  // Crear y push el tag manualmente
-  run(`git tag v${baseVersion}`);
-  run(`git push origin v${baseVersion}`);
   run(runReleaseMaster);
 
   // 5. Delete release branch
@@ -139,7 +154,7 @@ function orchestrateRelease(releaseType = "release") {
   }
 
   // 8. Generate changelog in develop
-  const lastDevTagFinal = getLastTag("v*-dev");
+  const lastDevTagFinal = getLastTag("develop");
   const changelogDevFinal = lastDevTagFinal
     ? isWin
       ? `set CHANGELOG_FROM=${lastDevTagFinal} && node scripts/generate-changelog.js`

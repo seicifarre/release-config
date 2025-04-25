@@ -3,9 +3,7 @@
   "git": {
     "requireCleanWorkingDir": true,
     "commitMessage": "release: v${version}",
-    "tagName": "v${version}",
-    "requireUpstream": false,
-    "requireCommits": false
+    "tagName": "v${version}"
   },
   "github": {
     "release": true,
