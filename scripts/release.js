@@ -38,9 +38,6 @@ function orchestrateRelease(releaseType = "patch") {
   const nextDevVersion = semver.inc(baseVersion, releaseType) + "-dev";
   const releaseBranch = `release/${baseVersion}`;
 
-  const configPathMaster = path.resolve(".release-it.master.ts");
-  const configPathDev = path.resolve(".release-it.dev.ts");
-
   console.log(
     `🔑 GITHUB_TOKEN detected:`,
     process.env.GITHUB_TOKEN ? "Yes ✅" : "No ❌"
@@ -78,21 +75,19 @@ function orchestrateRelease(releaseType = "patch") {
   run(`git tag ${tagName}`);
   run(`git push origin ${tagName}`);
 
-  // 5. Crear Release GitHub desde master
-  run(
-    `npx dotenv -- release-it --config ${configPathMaster} --ci --increment false --release-version ${baseVersion}`
-  );
+  // 5. Crear Release GitHub desde master via npm script
+  run(`npm run release:master -- --release-version=${baseVersion}`);
 
   // 6. Borrar rama release/*
   run(`git branch -d ${releaseBranch}`);
 
-  // 7. Merge master de vuelta a develop (antes del nuevo bump)
+  // 7. Merge master de vuelta a develop
   run(`git checkout develop`);
   run(`git pull origin develop`);
   run(`git merge --no-ff master --no-edit`);
   run(`git push origin develop`);
 
-  // 8. Bump siguiente versión -dev en develop
+  // 8. Bump siguiente versión -dev
   const current = getCurrentVersion();
   if (current !== nextDevVersion) {
     run(`npm version ${nextDevVersion} --no-git-tag-version`);
@@ -110,10 +105,8 @@ function orchestrateRelease(releaseType = "patch") {
   run(`git tag ${devTag}`);
   run(`git push origin ${devTag}`);
 
-  // 10. Crear Pre-release GitHub desde develop
-  run(
-    `npx dotenv -- release-it --config ${configPathDev} --ci --increment false --release-version ${nextDevVersion}`
-  );
+  // 10. Crear Pre-release desde develop via npm script
+  run(`npm run release:dev -- --release-version=${nextDevVersion}`);
 
   console.log(
     `✅ Release completado: ${baseVersion} (master) → ${nextDevVersion} (develop)`
