@@ -70,27 +70,22 @@ function orchestrateRelease(releaseType = "patch") {
   }
   run(`git push origin master`);
 
-  // 4. Crear y subir tag
-  const tagName = `v${baseVersion}`;
-  run(`git tag ${tagName}`);
-  run(`git push origin ${tagName}`);
-
-  // 5. Crear Release GitHub desde master via npm script con RELEASE_VERSION
+  // 4. Crear Release GitHub desde master via npm script con RELEASE_VERSION
   const runReleaseMaster = isWin
     ? `set RELEASE_VERSION=${baseVersion} && npm run release:master`
     : `RELEASE_VERSION=${baseVersion} npm run release:master`;
   run(runReleaseMaster);
 
-  // 6. Borrar rama release/*
+  // 5. Borrar rama release/*
   run(`git branch -d ${releaseBranch}`);
 
-  // 7. Merge master de vuelta a develop
+  // 6. Merge master de vuelta a develop
   run(`git checkout develop`);
   run(`git pull origin develop`);
   run(`git merge --no-ff master --no-edit`);
   run(`git push origin develop`);
 
-  // 8. Bump siguiente versión -dev
+  // 7. Bump siguiente versión -dev
   const current = getCurrentVersion();
   if (current !== nextDevVersion) {
     run(`npm version ${nextDevVersion} --no-git-tag-version`);
@@ -103,18 +98,13 @@ function orchestrateRelease(releaseType = "patch") {
     );
   }
 
-  // 9. Crear y subir tag -dev
-  const devTag = `v${nextDevVersion}`;
-  run(`git tag ${devTag}`);
-  run(`git push origin ${devTag}`);
-
-  // 10. Crear Pre-release desde develop via npm script con RELEASE_VERSION
+  // 8. Crear Pre-release desde develop via npm script con RELEASE_VERSION
   const runReleaseDev = isWin
     ? `set RELEASE_VERSION=${nextDevVersion} && npm run release:dev`
     : `RELEASE_VERSION=${nextDevVersion} npm run release:dev`;
   run(runReleaseDev);
 
-  // 11. Validar que package.json conserva la versión correcta -dev
+  // 9. Validar que package.json conserva la versión correcta -dev
   const versionAfter = getCurrentVersion();
   if (versionAfter !== nextDevVersion) {
     console.error(
