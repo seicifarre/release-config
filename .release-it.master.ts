@@ -13,13 +13,5 @@ export default {
   },
   npm: {
     publish: false
-  },
-  plugins: {
-    "@release-it/conventional-changelog": {
-      preset: {
-        name: "angular"
-      },
-      infile: "CHANGELOG.md"
-    }
   }
 } satisfies Config;
