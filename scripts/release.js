@@ -22,15 +22,36 @@ function addFilesToCommit() {
   if (existsSync("CHANGELOG.md")) run(`git add CHANGELOG.md`);
 }
 
-function getLastTag(matchPattern) {
+function getLastTag(branch, matchPattern) {
   try {
-    return execSync(`git describe --abbrev=0 --match ${matchPattern}`, {
+    // 1. Obtenemos todos los tags que matchean el patrón
+    const allTags = execSync(`git tag --list "${matchPattern}"`, {
       encoding: "utf8"
-    }).trim();
-  } catch {
-    console.warn(
-      `⚠️ No tag found matching "${matchPattern}". Changelog will be generated from the beginning of history.`
-    );
+    })
+      .split("\n")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag); // Nos aseguramos de quitar líneas vacías
+
+    if (allTags.length === 0) {
+      console.warn(`⚠️ No tags matching pattern "${matchPattern}".`);
+      return null;
+    }
+
+    // 2. Verificamos en qué branch está cada tag
+    for (const tag of allTags.reverse()) {
+      // Recorremos del último al primero
+      const branches = execSync(`git branch --contains refs/tags/${tag}`, {
+        encoding: "utf8"
+      });
+      if (branches.includes(branch)) {
+        return tag;
+      }
+    }
+
+    console.warn(`⚠️ No matching tag found in branch "${branch}".`);
+    return null;
+  } catch (error) {
+    console.warn(`⚠️ Error while searching for tag: ${error.message}`);
     return null;
   }
 }
@@ -71,8 +92,7 @@ function orchestrateRelease(releaseType = "release") {
 
   // 2. Bump to stable version and generate changelog
   run(`npm version ${baseVersion} --no-git-tag-version`);
-  let lastStableTag = getLastTag("v[0-9]*.[0-9]*.[0-9]*");
-  lastStableTag = lastStableTag?.includes("-") ? baseVersion : lastStableTag;
+  const lastStableTag = getLastTag("master", "v[0-9]*.[0-9]*.[0-9]*");
   const changelogStable = lastStableTag
     ? isWin
       ? `set CHANGELOG_FROM=${lastStableTag} && node scripts/generate-changelog.js`
@@ -137,7 +157,7 @@ function orchestrateRelease(releaseType = "release") {
   }
 
   // 8. Generate changelog in develop
-  const lastDevTagFinal = getLastTag("v*-dev");
+  const lastDevTagFinal = getLastTag("develop", "v*-dev");
   const changelogDevFinal = lastDevTagFinal
     ? isWin
       ? `set CHANGELOG_FROM=${lastDevTagFinal} && node scripts/generate-changelog.js`
