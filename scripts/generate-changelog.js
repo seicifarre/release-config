@@ -5,12 +5,27 @@ const from = process.env.CHANGELOG_FROM;
 const to = process.env.CHANGELOG_TO || "HEAD";
 
 if (!from) {
-  console.error("❌ Debes definir la variable CHANGELOG_FROM.");
-  process.exit(1);
+  console.warn(
+    "⚠️ No CHANGELOG_FROM defined. The changelog will include all commits from the beginning."
+  );
 }
 
-const command = `npx conventional-changelog -p angular -r 0 --from=${from} --to=${to} -i CHANGELOG.md -s`;
+// Build the changelog command
+const command = from
+  ? `npx conventional-changelog -p angular -r 0 --from=${from} --to=${to} -i CHANGELOG.md -s`
+  : `npx conventional-changelog -p angular -r 0 --to=${to} -i CHANGELOG.md -s`;
 
-console.log(`🔧 Generando changelog desde ${from} hasta ${to}...`);
-execSync(command, { stdio: "inherit" });
-console.log("✅ Changelog actualizado.");
+console.log(
+  `🛠 Generating changelog ${
+    from ? `from ${from}` : "from the beginning"
+  } to ${to}...`
+);
+
+try {
+  execSync(command, { stdio: "inherit" });
+  console.log("✅ CHANGELOG.md updated successfully.");
+} catch (error) {
+  console.error("❌ Failed to generate changelog.");
+  console.error(error.message);
+  process.exit(1);
+}
