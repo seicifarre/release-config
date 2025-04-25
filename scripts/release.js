@@ -1,4 +1,5 @@
 import "dotenv/config";
+import path from "path";
 import { execSync } from "child_process";
 import { readFileSync, existsSync } from "fs";
 import semver from "semver";
@@ -37,6 +38,9 @@ function orchestrateRelease(releaseType = "patch") {
   const nextDevVersion = semver.inc(baseVersion, releaseType) + "-dev";
   const releaseBranch = `release/${baseVersion}`;
 
+  const configPathMaster = path.resolve(".release-it.master.ts");
+  const configPathDev = path.resolve(".release-it.dev.ts");
+
   console.log(
     `🔑 GITHUB_TOKEN detected:`,
     process.env.GITHUB_TOKEN ? "Yes ✅" : "No ❌"
@@ -65,7 +69,7 @@ function orchestrateRelease(releaseType = "patch") {
 
   // 5. Crear Release GitHub desde master
   run(
-    `npx release-it --no-npm --config .release-it.master.ts --ci --increment false --release-version ${baseVersion}`
+    `npx release-it --config ${configPathMaster} --ci --increment false --release-version ${baseVersion}`
   );
 
   // 6. Borrar rama release/*
@@ -92,7 +96,7 @@ function orchestrateRelease(releaseType = "patch") {
 
   // 9. Crear Pre-release GitHub desde develop
   run(
-    `npx release-it --no-npm --config .release-it.dev.ts --ci --increment false --release-version ${nextDevVersion}`
+    `npx release-it --config ${configPathDev} --ci --increment false --release-version ${nextDevVersion}`
   );
 
   console.log(
