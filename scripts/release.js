@@ -18,17 +18,33 @@ function getCurrentVersion() {
 
 function addFilesToCommit() {
   run(`git add package.json`);
-  if (existsSync("package-lock.json")) {
-    run(`git add package-lock.json`);
+  if (existsSync("package-lock.json")) run(`git add package-lock.json`);
+  if (existsSync("CHANGELOG.md")) run(`git add CHANGELOG.md`);
+}
+
+function getLastTag(matchPattern) {
+  try {
+    return execSync(`git describe --abbrev=0 --match ${matchPattern}`, {
+      encoding: "utf8"
+    }).trim();
+  } catch (error) {
+    console.warn(
+      `⚠️ No tag found matching "${matchPattern}". Changelog will be generated from the beginning of history.`
+    );
+    return null;
   }
 }
 
-function orchestrateRelease(releaseType = "patch") {
-  const currentVersionRaw = getCurrentVersion();
+function orchestrateRelease(releaseType = "release") {
+  if (!["release", "minor", "major"].includes(releaseType)) {
+    console.error("❌ Invalid release type. Use: release, minor, or major.");
+    process.exit(1);
+  }
 
+  const currentVersionRaw = getCurrentVersion();
   if (!currentVersionRaw.endsWith("-dev")) {
     console.error(
-      "❌ The current version does not contain '-dev'. Make sure you're in develop."
+      "❌ The current version does not end with '-dev'. Make sure you are on the develop branch."
     );
     process.exit(1);
   }
@@ -48,25 +64,31 @@ function orchestrateRelease(releaseType = "patch") {
     process.env.GITHUB_TOKEN ? "Yes ✅" : "No ❌"
   );
 
-  // 1. Create release/x.y.z from develop
+  // 1. Create release branch from develop
   run(`git checkout develop`);
   run(`git pull origin develop`);
   run(`git checkout -b ${releaseBranch}`);
 
-  // 2. Bump stable version
+  // 2. Bump to stable version and generate changelog
   run(`npm version ${baseVersion} --no-git-tag-version`);
+  const lastDevTag = getLastTag("v*-dev");
+  const changelogDevRelease = lastDevTag
+    ? isWin
+      ? `set CHANGELOG_FROM=${lastDevTag} && node scripts/generate-changelog.js`
+      : `CHANGELOG_FROM=${lastDevTag} node scripts/generate-changelog.js`
+    : `node scripts/generate-changelog.js`;
+  run(changelogDevRelease);
   addFilesToCommit();
   run(`git commit -m "release: v${baseVersion}"`);
 
-  // 3. Merge to master with preference for release/*
+  // 3. Merge release into master
   run(`git checkout master`);
   run(`git pull origin master`);
   try {
     run(`git merge --no-ff --no-edit ${releaseBranch}`);
   } catch {
-    // In case of conflict, overwrite with release files
     console.log(
-      `⚠️ Conflict detected. The files from ${releaseBranch} will be applied as a resolution.`
+      `⚠️ Conflict detected. Applying files from ${releaseBranch} to resolve.`
     );
     run(`git checkout ${releaseBranch} -- .`);
     run(
@@ -75,22 +97,22 @@ function orchestrateRelease(releaseType = "patch") {
   }
   run(`git push origin master`);
 
-  // 4. Create GitHub Release from master via npm script with RELEASE_VERSION
+  // 4. Create GitHub release from master
   const runReleaseMaster = isWin
     ? `set RELEASE_VERSION=${baseVersion} && npm run release:master`
     : `RELEASE_VERSION=${baseVersion} npm run release:master`;
   run(runReleaseMaster);
 
-  // 5. Delete branch release/*
+  // 5. Delete the temporary release branch
   run(`git branch -d ${releaseBranch}`);
 
-  // 6. Merge master back to develop
+  // 6. Merge master back into develop
   run(`git checkout develop`);
   run(`git pull origin develop`);
   run(`git merge --no-ff --no-edit master`);
   run(`git push origin develop`);
 
-  // 7. Bump next version -dev
+  // 7. Bump next -dev version
   const current = getCurrentVersion();
   if (current !== nextDevVersion) {
     run(`npm version ${nextDevVersion} --no-git-tag-version`);
@@ -99,34 +121,41 @@ function orchestrateRelease(releaseType = "patch") {
     run(`git push origin develop`);
   } else {
     console.log(
-      `⚠️ develop already has version ${nextDevVersion}, no bump is performed.`
+      `⚠️ Version ${nextDevVersion} already set on develop. Skipping bump.`
     );
   }
 
-  // 8. Create Pre-release from develop via npm script with RELEASE_VERSION
+  // 8. Generate changelog in develop (post bump)
+  const lastDevTagFinal = getLastTag("v*-dev");
+  const changelogDevFinal = lastDevTagFinal
+    ? isWin
+      ? `set CHANGELOG_FROM=${lastDevTagFinal} && node scripts/generate-changelog.js`
+      : `CHANGELOG_FROM=${lastDevTagFinal} node scripts/generate-changelog.js`
+    : `node scripts/generate-changelog.js`;
+  run(changelogDevFinal);
+  run(`git add CHANGELOG.md`);
+  run(`git commit -m "docs: update changelog for ${nextDevVersion}"`);
+  run(`git push origin develop`);
+
+  // 9. Create pre-release from develop on GitHub
   const runReleaseDev = isWin
     ? `set RELEASE_VERSION=${nextDevVersion} && npm run release:dev`
     : `RELEASE_VERSION=${nextDevVersion} npm run release:dev`;
   run(runReleaseDev);
 
-  // 9. Validate that package.json retains the correct version -dev
+  // 10. Final version verification
   const versionAfter = getCurrentVersion();
   if (versionAfter !== nextDevVersion) {
     console.error(
-      `❌ ERROR: Version in package.json was changed unexpectedly. Expected: ${nextDevVersion}, Current: ${versionAfter}`
+      `❌ ERROR: package.json version mismatch. Expected: ${nextDevVersion}, Found: ${versionAfter}`
     );
     process.exit(1);
   }
 
   console.log(
-    `✅ Release completed: ${currentVersionRaw} (develop) → ${baseVersion} (master) → ${nextDevVersion} (develop)`
+    `✅ Release completed: ${baseVersion} (master) → ${nextDevVersion} (develop)`
   );
 }
 
-const releaseType = process.argv[2] || "release";
-if (!["release", "minor", "major"].includes(releaseType)) {
-  console.error("❌ Invalid release type. Use: release, minor or major");
-  process.exit(1);
-}
-
-orchestrateRelease(releaseType);
+const releaseTypeInput = process.argv[2] || "release";
+orchestrateRelease(releaseTypeInput);
