@@ -34,7 +34,7 @@ function orchestrateRelease(releaseType = "patch") {
   }
 
   const baseVersion = currentVersionRaw.replace("-dev", "");
-  const nextDevVersion = semver.inc(baseVersion, releaseType) + "-dev";
+  const nextDevVersion = semver.inc(baseVersion, releaseType, "dev", false);
   const releaseBranch = `release/${baseVersion}`;
   const isWin = process.platform === "win32";
 
