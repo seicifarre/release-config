@@ -27,7 +27,7 @@ function getLastTag(matchPattern) {
     return execSync(`git describe --abbrev=0 --match ${matchPattern}`, {
       encoding: "utf8"
     }).trim();
-  } catch (error) {
+  } catch {
     console.warn(
       `⚠️ No tag found matching "${matchPattern}". Changelog will be generated from the beginning of history.`
     );
@@ -97,13 +97,23 @@ function orchestrateRelease(releaseType = "release") {
   }
   run(`git push origin master`);
 
+  // ✅ NEW: Ensure clean status before running release-it
+  const status = execSync("git status --porcelain").toString().trim();
+  if (status) {
+    console.warn(
+      "⚠️ Warning: Working directory is not clean. Staging and committing remaining changes..."
+    );
+    run("git add -u");
+    run('git commit -m "chore: finalize files before release-it"');
+  }
+
   // 4. Create GitHub release from master
   const runReleaseMaster = isWin
     ? `set RELEASE_VERSION=${baseVersion} && npm run release:master`
     : `RELEASE_VERSION=${baseVersion} npm run release:master`;
   run(runReleaseMaster);
 
-  // 5. Delete the temporary release branch
+  // 5. Delete release branch
   run(`git branch -d ${releaseBranch}`);
 
   // 6. Merge master back into develop
@@ -125,7 +135,7 @@ function orchestrateRelease(releaseType = "release") {
     );
   }
 
-  // 8. Generate changelog in develop (post bump)
+  // 8. Generate changelog in develop
   const lastDevTagFinal = getLastTag("v*-dev");
   const changelogDevFinal = lastDevTagFinal
     ? isWin
@@ -137,13 +147,13 @@ function orchestrateRelease(releaseType = "release") {
   run(`git commit -m "docs: update changelog for ${nextDevVersion}"`);
   run(`git push origin develop`);
 
-  // 9. Create pre-release from develop on GitHub
+  // 9. Create pre-release from develop
   const runReleaseDev = isWin
     ? `set RELEASE_VERSION=${nextDevVersion} && npm run release:dev`
     : `RELEASE_VERSION=${nextDevVersion} npm run release:dev`;
   run(runReleaseDev);
 
-  // 10. Final version verification
+  // 10. Final version validation
   const versionAfter = getCurrentVersion();
   if (versionAfter !== nextDevVersion) {
     console.error(
