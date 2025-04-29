@@ -1,0 +1,51 @@
+{
+  "compilerOptions": {
+    /* --- Opciones de Tipo y Módulos --- */
+    "target": "ES2022", // Target moderno compatible con Node 22
+    "module": "NodeNext", // NECESARIO para ESM nativo en Node con TS
+    "moduleResolution": "NodeNext", // Complementa a module: NodeNext
+    "esModuleInterop": true, // Mejora compatibilidad entre CJS y ESM
+    "resolveJsonModule": true, // Permite importar archivos .json
+    "allowSyntheticDefaultImports": true, // Necesario para esModuleInterop
+
+    /* --- Chequeo Estricto y Calidad de Código --- */
+    "strict": true, // Habilita todas las comprobaciones estrictas (recomendado)
+    "forceConsistentCasingInFileNames": true, // Evita problemas entre OS
+    "noUnusedLocals": true, // Reporta locales no usados
+    "noUnusedParameters": true, // Reporta parámetros no usados
+    "noImplicitReturns": true, // Asegura que todas las rutas retornen valor
+    "noFallthroughCasesInSwitch": true, // Evita fallos accidentales en switch
+
+    /* --- Salida de Compilación (Ajustar según necesidad) --- */
+    // 'outDir' es donde 'tsc' pondría los .js compilados.
+    // ts-node lo usa internamente pero no necesariamente lo escribe a disco al ejecutar.
+    // Tus scripts build:* ya indican que compilas a 'dist/Server'
+    "outDir": "./dist",
+    // 'rootDir' ayuda a TS a determinar la estructura de carpetas en 'outDir'.
+    // Ajusta si tus fuentes TS no están directamente en la raíz.
+    // "rootDir": "./src", // Ejemplo si tu código TS está en 'src/'
+
+    /* --- Opciones de Librería y Entorno --- */
+    // 'lib' incluye definiciones de tipo globales. 'DOM' puede ser necesario por Angular.
+    "lib": ["ESNext"], // Incluye las últimas features de ECMAScript
+
+    /* --- Optimización y Debugging --- */
+    "skipLibCheck": true, // Omite chequeo de tipos en .d.ts (acelera build)
+    "sourceMap": false, // Generar source maps (útil para debug, opcional para scripts)
+    "declaration": false // Generar archivos .d.ts (útil para librerías, no tanto para scripts)
+  },
+  /* --- Inclusión/Exclusión de Archivos (¡IMPORTANTE AJUSTAR!) --- */
+  // 'include' especifica qué archivos compilar. Ajusta a tu estructura.
+  // Ejemplo: Incluir scripts y el código del servidor
+  "include": [
+    "scripts/**/*.ts", // Tus scripts de release, etc.
+    "Server/**/*.ts"  // Asumiendo que tu código de servidor está aquí (por 'tsc -p Server')
+    // Añade otras carpetas con TS si es necesario
+    ],
+  // 'exclude' especifica qué ignorar. node_modules y dist son estándar.
+  "exclude": [
+    "node_modules",
+    "dist", // La carpeta de salida
+    "**/*.spec.ts" // Excluir archivos de test si no los compilas aquí
+    ]
+}
