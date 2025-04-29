@@ -1,3 +1,12 @@
+## [1.0.8](https://github.com/seicifarre/release-config/compare/1.0.7...1.0.8) (2025-04-29)
+
+
+### Features
+
+* **release:** set next develop version ([e803b77](https://github.com/seicifarre/release-config/commit/e803b77b21a75e206269c3388446a75af6ca3d65))
+
+
+
 ## [1.0.7](https://github.com/seicifarre/release-config/compare/v1.0.5...v1.0.7) (2025-04-29)
 
 
