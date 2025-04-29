@@ -118,9 +118,7 @@ async function runProductionRelease(): Promise<void> {
     // semver.prerelease('1.0.1') devuelve null
     if (semver.prerelease(currentDevVersion)) {
       // Si tiene parte de pre-release, la quitamos para obtener la versión base
-      nextVersion = `<span class="math-inline">\{semver\.major\(currentDevVersion\)\}\.</span>{semver.minor(currentDevVersion)}.${semver.patch(
-        currentDevVersion
-      )}`;
+      nextVersion = `${semver.major(currentDevVersion)}.${semver.minor(currentDevVersion)}.${semver.patch(currentDevVersion)}`;
       console.log(
         `    ℹ️ Es una pre-release. Versión base extraída: ${nextVersion}`
       );
