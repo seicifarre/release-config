@@ -1,0 +1,19 @@
+## [1.0.6](https://github.com/seicifarre/release-config/compare/v1.0.5...v1.0.6) (2025-04-29)
+
+
+### Bug Fixes
+
+* **release:** add quotes on git flow message ([56d2dcc](https://github.com/seicifarre/release-config/commit/56d2dcc9ee513aa4e76e881f01224e8031873d5b))
+* **release:** calculate release version from develop ([db0e784](https://github.com/seicifarre/release-config/commit/db0e78489719c1ed32144030e631d8d4315574e3))
+* **release:** concatenate string for new version ([a86181f](https://github.com/seicifarre/release-config/commit/a86181fb5c2c0a01e730fd53042e49b8123eb566))
+* **release:** remove flag to git flow finish ([dac1d26](https://github.com/seicifarre/release-config/commit/dac1d2690644581e190645eb7f9335f5f1e7afeb))
+
+
+### Features
+
+* **release:** finalice release production process ([bb972dd](https://github.com/seicifarre/release-config/commit/bb972dd45987a0722aa62d1581f0ba480792855e))
+* **release:** remove replace-in-file ([3dcef25](https://github.com/seicifarre/release-config/commit/3dcef25f9073fa31145973d17f01cde46a207a5d))
+* **release:** update files version ([ff48c65](https://github.com/seicifarre/release-config/commit/ff48c6591f9988d66c407858c074b42c4828e2e1))
+
+
+
