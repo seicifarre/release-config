@@ -245,21 +245,32 @@ async function runProductionRelease(): Promise<void> {
     // === PASO 5: Finalizar Git Flow Release ===
     console.log(
       `[5/7] Finalizando 'git flow release finish v${nextVersion}'...`
-    );
-    const mergeMessageContent: string = `Merge release v${nextVersion} into develop`;
-    // Pasamos los argumentos como array a 'git'
-    await runCommand("git", [
+    ); // Log con 'v'
+
+    // REINTENTO: Construimos el mensaje PARA el commit de merge en develop,
+    //            esta vez AÑADIENDO las comillas dobles DENTRO de la variable.
+    const mergeMessageContentWithQuotes: string = `"Merge release v${nextVersion} into develop"`;
+
+    // Construimos el comando final. Pasamos la versión SIN 'v'.
+    // El argumento para -m ahora es la cadena que ya incluye las comillas.
+    const finishCommandArgs: string[] = [
       "flow",
       "release",
       "finish",
-      "-m",
-      mergeMessageContent,
-      "-p",
-      nextVersion
-    ]); // Pasamos versión SIN 'v'
+      "-m", // El flag
+      mergeMessageContentWithQuotes, // El mensaje CON comillas como argumento único
+      "-p", // El flag de push
+      nextVersion // La versión base
+    ];
+
+    console.log(`   Ejecutando: git ${finishCommandArgs.join(" ")}`); // Logueamos el comando exacto
+    await runCommand("git", finishCommandArgs);
+
+    // Asumimos que el tag creado por git flow sí llevará la 'v' (es lo habitual)
     console.log(
       `✅ Git flow release finalizado y ramas/tag (v${nextVersion}) empujados a origin.`
     );
+    // --- Fin del PASO 5 ---
 
     // === PASO 6: Crear Release en GitHub ===
     // El tag ya fue creado y empujado por 'git flow release finish -p' en el paso anterior
