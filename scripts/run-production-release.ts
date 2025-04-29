@@ -63,7 +63,7 @@ async function runProductionRelease(): Promise<void> {
         if (currentBranch !== 'develop') throw new Error(`❌ Error: Debes estar en la rama 'develop' (rama actual: ${currentBranch}).`);
         console.log('    🔄 Actualizando ramas y tags...');
         await runCommand('git pull origin develop');
-        await runCommand('git pull origin master');
+        await runCommand('git pull --ff-only origin master');
         await runCommand('git fetch --tags origin', { ignoreStderr: true });
         console.log('✅ Prerrequisitos cumplidos.');
 
