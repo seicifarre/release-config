@@ -7,6 +7,7 @@
     "release": "node scripts/release.js",
     "release:master": "dotenv -- release-it --ci --no-increment --no-git.changelog",
     "release:dev": "dotenv -- release-it --ci --no-increment --preRelease",
+    "release:prod": "node --loader ts-node/esm scripts/run-production-release.ts",
     "changelog": "node scripts/generate-changelog.js"
   },
   "dependencies": {
@@ -15,8 +16,12 @@
   "devDependencies": {
     "@release-it/bumper": "7.0.5",
     "conventional-changelog-cli": "5.0.0",
+    "conventional-recommended-bump": "11.0.0",
     "dotenv-cli": "8.0.0",
     "release-it": "19.0.1",
-    "semver": "7.7.1"
+    "replace-in-file": "8.3.0",
+    "semver": "7.7.1",
+    "ts-node": "10.9.2",
+    "typescript": "5.8.3"
   }
 }
