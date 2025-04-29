@@ -247,26 +247,24 @@ async function runProductionRelease(): Promise<void> {
       `[5/7] Finalizando 'git flow release finish v${nextVersion}'...`
     );
 
-    // Construimos los argumentos SIN el flag -m
+    // REINTENTO 2: Usamos -m pero con un mensaje SIN ESPACIOS,
+    const tagOrMergeMessageNoSpaces: string = `Release_v${nextVersion}`; // Mensaje simple sin espacios
+
+    // Construimos los argumentos
     const finishCommandArgs: string[] = [
       "flow",
       "release",
       "finish",
-      // '-m', mergeMessageContentWithQuotes, // <-- FLAG -m ELIMINADO
+      "-m", // El flag -m
+      tagOrMergeMessageNoSpaces, // El mensaje SIN espacios
       "-p", // Mantenemos el push automático
       nextVersion // Pasamos versión SIN 'v'
     ];
 
-    console.log(
-      `   Ejecutando: git ${finishCommandArgs.join(" ")} (con GIT_EDITOR=true)`
-    );
+    console.log(`   Ejecutando: git ${finishCommandArgs.join(" ")}`);
+    // Ejecutamos SIN la variable GIT_EDITOR=true esta vez
+    await runCommand("git", finishCommandArgs);
 
-    // Ejecutamos el comando añadiendo la variable de entorno GIT_EDITOR=true
-    await runCommand("git", finishCommandArgs, {
-      env: { ...process.env, GIT_EDITOR: "true" } // Hereda env actual y añade/sobrescribe GIT_EDITOR
-    });
-
-    // Asumimos que el tag creado por git flow sí llevará la 'v' (es lo habitual)
     console.log(
       `✅ Git flow release finalizado y ramas/tag (v${nextVersion}) empujados a origin.`
     );
