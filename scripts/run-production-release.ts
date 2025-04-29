@@ -6,14 +6,15 @@ import semver from "semver";
 import path from "node:path";
 import { readFile } from "fs/promises";
 import { fileURLToPath } from "url";
+import replace from 'replace-in-file';
 
 const exec = promisify(execCb);
 
 // --- Configuración ---
-//const conventionalPreset: string = 'angular';
-//const customFilePath: string = 'ngsw-config.json';
-//const customFileVersionPath: string = 'appData.version';
-//const changelogFile: string = 'CHANGELOG.md';
+const conventionalPreset: string = 'angular';
+const customFilePath: string = 'ngsw-config.json';
+const customFileVersionPath: string = 'appData.version';
+const changelogFile: string = 'CHANGELOG.md';
 // --- Fin Configuración ---
 
 // Función auxiliar para ejecutar comandos (sin cambios)
@@ -51,6 +52,43 @@ async function runCommand(
 interface PackageJson {
   version: string;
   [key: string]: any;
+}
+
+// --- Función Auxiliar para Actualizar Versión en Archivo Personalizado ---
+async function updateCustomFileVersion(filePath: string, jsonPath: string, newVersion: string): Promise<void> {
+    // El jsonPath ('appData.version') nos sirve de guía, pero el Regex se centra en la línea clave/valor.
+    console.log(`   🔄 Actualizando versión en ${filePath} (esperada en ${jsonPath}) a ${newVersion}...`);
+
+    // Regex ajustado para encontrar "version": "VALOR_ACTUAL"
+    // - ("version"\s*:\s*) : Captura la clave "version", espacios opcionales, :, espacios opcionales (Grupo 1)
+    // - "([^"]+)"          : Captura el valor actual de la versión entre comillas (Grupo 2)
+    // Se asume que la clave "version" es única o que la primera encontrada es la correcta.
+    // Es sensible a las comillas dobles alrededor de la clave y el valor.
+    const versionRegex = /(\"version\"\s*:\s*)\"([^"]+)\"/;
+
+    try {
+        const results = await replace({
+            files: filePath,
+            from: versionRegex,
+            // Reemplazo: Mantiene el Grupo 1 (clave y ':') y reemplaza el valor (Grupo 2) con la nueva versión entre comillas.
+            to: `$1"${newVersion}"`,
+            countMatches: true // Útil para debug
+        });
+
+        // Verificar si se hicieron cambios
+        const changedFile = results.find(r => r.file === filePath && r.hasChanged);
+        if (changedFile) {
+            // console.log('DEBUG: Matches found:', changedFile.numMatches); // Descomentar para debug
+            console.log(`   ✅ Versión actualizada en: ${filePath}`);
+        } else {
+            // Si no encuentra el patrón, el archivo no se modifica.
+            console.warn(`   ⚠️ No se encontró el patrón de versión ("version": "...") en ${filePath}. El archivo no fue modificado.`);
+            // console.log('DEBUG: Results from replace-in-file:', results); // Descomentar para debug
+        }
+    } catch (error) {
+        console.error(`   ❌ Error actualizando ${filePath}:`, error);
+        throw new Error(`Failed to update version in ${filePath}`);
+    }
 }
 
 // --- Inicio del Script Principal ---
@@ -148,10 +186,39 @@ async function runProductionRelease(): Promise<void> {
     console.log(`✅ Rama ${releaseBranch} creada y activa.`);
 
     // === PASO 4: Preparar Contenido de la Rama Release ===
-    // (Implementaremos esto en el siguiente mensaje)
-    console.log(
-      "[4/7] Pendiente: Preparar contenido (versión, changelog, commit)..."
-    );
+    console.log(`[4/7] Preparando contenido de la rama ${releaseBranch}...`);
+
+    // 4.1. Actualizar package.json (sin crear commit ni tag aquí)
+    console.log(`   [4.1] Actualizando versión en package.json a ${nextVersion}...`);
+    // Usamos --allow-same-version por si la versión base ya existía sin -dev
+    await runCommand(`npm version ${nextVersion} --no-git-tag-version --allow-same-version`);
+    console.log(`      ✅ package.json y package-lock.json actualizados.`);
+
+    // 4.2. Actualizar archivo personalizado (ngsw-config.json)
+    // Necesitas la función updateCustomFileVersion definida en el script
+    console.log(`   [4.2] Actualizando versión en archivo personalizado (${customFilePath})...`);
+    await updateCustomFileVersion(customFilePath, customFileVersionPath, nextVersion);
+    // La función updateCustomFileVersion ya imprime su propio log de éxito/warning
+
+    // 4.3. Actualizar CHANGELOG.md
+    console.log(`   [4.3] Generando/Actualizando ${changelogFile}...`);
+    // -p usa el preset, -i sobrescribe el mismo archivo, -s añade la entrada para la release actual
+    await runCommand(`npx conventional-changelog -p ${conventionalPreset} -i ${changelogFile} -s --pkg ./package.json`);
+    console.log(`      ✅ ${changelogFile} actualizado.`);
+
+    // 4.4. Staging de los cambios
+    console.log(`   [4.4] Añadiendo archivos modificados al staging area...`);
+    await runCommand(`git add package.json package-lock.json ${customFilePath} ${changelogFile}`);
+    console.log(`      ✅ Archivos preparados.`);
+
+    // 4.5. Crear commit de preparación en la rama release/*
+    console.log(`   [4.5] Creando commit de preparación...`);
+    const commitMessage = `"chore(release): prepare release v${nextVersion}"`;
+    await runCommand(`git commit -m ${commitMessage}`);
+    console.log(`      ✅ Commit creado: ${commitMessage}`);
+
+    console.log(`✅ Contenido de la rama ${releaseBranch} preparado.`);
+    // --- Fin del PASO 4 ---
 
     // === PASO 5: Finalizar Git Flow Release ===
     // (Implementaremos esto después)
