@@ -242,33 +242,45 @@ async function runProductionRelease(): Promise<void> {
     console.log(`      ✅ Commit creado: ${commitMessage}`);
     console.log(`✅ Contenido de la rama ${releaseBranch} preparado.`);
 
-    // === PASO 5: Finalizar Git Flow Release ===
+    // === PASO 5: Finalizar Git Flow Release (Localmente) y Empujar Manualmente ===
     console.log(
-      `[5/7] Finalizando 'git flow release finish v${nextVersion}'...`
+      `[5/7] Finalizando 'git flow release finish v${nextVersion}' localmente...`
     );
 
-    // REINTENTO 2: Usamos -m pero con un mensaje SIN ESPACIOS,
-    const tagOrMergeMessageNoSpaces: string = `Release_v${nextVersion}`; // Mensaje simple sin espacios
+    // REINTENTO 3: Ejecutamos finish SIN -p y con el mensaje sin espacios para el tag/merge.
+    const messageNoSpaces: string = `Release_v${nextVersion}`; // Mensaje simple sin espacios
 
-    // Construimos los argumentos
-    const finishCommandArgs: string[] = [
+    const finishArgs: string[] = [
       "flow",
       "release",
       "finish",
-      "-m", // El flag -m
-      tagOrMergeMessageNoSpaces, // El mensaje SIN espacios
-      "-p", // Mantenemos el push automático
+      "-m", // Usamos -m con mensaje sin espacios
+      messageNoSpaces,
+      // '-p', // <-- ELIMINAMOS EL FLAG -p
       nextVersion // Pasamos versión SIN 'v'
     ];
 
-    console.log(`   Ejecutando: git ${finishCommandArgs.join(" ")}`);
-    // Ejecutamos SIN la variable GIT_EDITOR=true esta vez
-    await runCommand("git", finishCommandArgs);
-
+    console.log(`   Ejecutando: git ${finishArgs.join(" ")}`);
+    // Ejecutamos SIN GIT_EDITOR=true, confiando en -m
+    await runCommand("git", finishArgs);
     console.log(
-      `✅ Git flow release finalizado y ramas/tag (v${nextVersion}) empujados a origin.`
+      `   ✅ Git flow release finalizado localmente (merges, tag local, borrado local de rama release).`
     );
-    // --- Fin del PASO 5 ---
+
+    // Ahora, hacemos push explícitamente de lo necesario: master, develop y los tags
+    console.log(`   [5.1] Empujando rama master actualizada a origin...`);
+    await runCommand("git", ["push", "origin", "master"]);
+
+    console.log(`   [5.2] Empujando rama develop actualizada a origin...`);
+    await runCommand("git", ["push", "origin", "develop"]);
+
+    console.log(`   [5.3] Empujando tags a origin...`);
+    // Usamos --tags para empujar todos los tags locales que no estén en el remoto
+    // Esto incluye el tag '1.0.7' (o 'v1.0.7' si git flow lo prefijara) que se acaba de crear.
+    await runCommand("git", ["push", "--tags", "origin"]);
+
+    console.log(`✅ Ramas master, develop y tags empujados a origin.`);
+    // --- Fin del PASO 5 Modificado ---
 
     // === PASO 6: Crear Release en GitHub ===
     // El tag ya fue creado y empujado por 'git flow release finish -p' en el paso anterior
