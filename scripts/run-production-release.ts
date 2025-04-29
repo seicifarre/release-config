@@ -245,26 +245,26 @@ async function runProductionRelease(): Promise<void> {
     // === PASO 5: Finalizar Git Flow Release ===
     console.log(
       `[5/7] Finalizando 'git flow release finish v${nextVersion}'...`
-    ); // Log con 'v'
+    );
 
-    // REINTENTO: Construimos el mensaje PARA el commit de merge en develop,
-    //            esta vez AÑADIENDO las comillas dobles DENTRO de la variable.
-    const mergeMessageContentWithQuotes: string = `"Merge release v${nextVersion} into develop"`;
-
-    // Construimos el comando final. Pasamos la versión SIN 'v'.
-    // El argumento para -m ahora es la cadena que ya incluye las comillas.
+    // Construimos los argumentos SIN el flag -m
     const finishCommandArgs: string[] = [
       "flow",
       "release",
       "finish",
-      "-m", // El flag
-      mergeMessageContentWithQuotes, // El mensaje CON comillas como argumento único
-      "-p", // El flag de push
-      nextVersion // La versión base
+      // '-m', mergeMessageContentWithQuotes, // <-- FLAG -m ELIMINADO
+      "-p", // Mantenemos el push automático
+      nextVersion // Pasamos versión SIN 'v'
     ];
 
-    console.log(`   Ejecutando: git ${finishCommandArgs.join(" ")}`); // Logueamos el comando exacto
-    await runCommand("git", finishCommandArgs);
+    console.log(
+      `   Ejecutando: git ${finishCommandArgs.join(" ")} (con GIT_EDITOR=true)`
+    );
+
+    // Ejecutamos el comando añadiendo la variable de entorno GIT_EDITOR=true
+    await runCommand("git", finishCommandArgs, {
+      env: { ...process.env, GIT_EDITOR: "true" } // Hereda env actual y añade/sobrescribe GIT_EDITOR
+    });
 
     // Asumimos que el tag creado por git flow sí llevará la 'v' (es lo habitual)
     console.log(
