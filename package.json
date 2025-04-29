@@ -1,6 +1,6 @@
 {
   "name": "release-config",
-  "version": "1.0.6-dev.0",
+  "version": "1.0.7-dev.0",
   "description": "Automatización de releases para entorno con ramas master y develop usando release-it",
   "type": "module",
   "scripts": {
@@ -16,7 +16,6 @@
   "devDependencies": {
     "@release-it/bumper": "7.0.5",
     "conventional-changelog-cli": "5.0.0",
-    "conventional-recommended-bump": "11.0.0",
     "dotenv-cli": "8.0.0",
     "release-it": "19.0.1",
     "semver": "7.7.1",
