@@ -1,20 +1,19 @@
 #!/usr/bin/env npx ts-node
 
-import { promisify } from "util";
-import { exec as execCb, ExecOptions } from "child_process";
+import { promisify } from "node:util";
+import { exec as execCb, ExecOptions } from "node:child_process";
 import semver from "semver";
 import path from "node:path";
-import { readFile } from "fs/promises";
-import { fileURLToPath } from "url";
-import replace from 'replace-in-file';
+import { fileURLToPath } from "node:url";
+import { readFile, writeFile } from "node:fs/promises";
 
 const exec = promisify(execCb);
 
 // --- Configuración ---
-const conventionalPreset: string = 'angular';
-const customFilePath: string = 'ngsw-config.json';
-const customFileVersionPath: string = 'appData.version';
-const changelogFile: string = 'CHANGELOG.md';
+const conventionalPreset: string = "angular";
+const customFilePath: string = "ngsw-config.json";
+const customFileVersionPath: string = "appData.version";
+const changelogFile: string = "CHANGELOG.md";
 // --- Fin Configuración ---
 
 // Función auxiliar para ejecutar comandos (sin cambios)
@@ -54,41 +53,72 @@ interface PackageJson {
   [key: string]: any;
 }
 
-// --- Función Auxiliar para Actualizar Versión en Archivo Personalizado ---
-async function updateCustomFileVersion(filePath: string, jsonPath: string, newVersion: string): Promise<void> {
-    // El jsonPath ('appData.version') nos sirve de guía, pero el Regex se centra en la línea clave/valor.
-    console.log(`   🔄 Actualizando versión en ${filePath} (esperada en ${jsonPath}) a ${newVersion}...`);
+// --- Función Auxiliar para Actualizar Versión en Archivo Personalizado (NUEVA VERSIÓN) ---
+async function updateCustomFileVersion(
+  filePath: string,
+  jsonPath: string,
+  newVersion: string
+): Promise<void> {
+  // jsonPath ahora solo se usa para el mensaje de log
+  console.log(
+    `   🔄 Actualizando versión en ${filePath} (esperada en ${jsonPath}) a ${newVersion} [Método: Parse/Modify]...`
+  );
 
-    // Regex ajustado para encontrar "version": "VALOR_ACTUAL"
-    // - ("version"\s*:\s*) : Captura la clave "version", espacios opcionales, :, espacios opcionales (Grupo 1)
-    // - "([^"]+)"          : Captura el valor actual de la versión entre comillas (Grupo 2)
-    // Se asume que la clave "version" es única o que la primera encontrada es la correcta.
-    // Es sensible a las comillas dobles alrededor de la clave y el valor.
-    const versionRegex = /(\"version\"\s*:\s*)\"([^"]+)\"/;
+  try {
+    // 1. Leer el contenido del archivo JSON
+    const fileContent = await readFile(filePath, "utf-8");
 
-    try {
-        const results = await replace({
-            files: filePath,
-            from: versionRegex,
-            // Reemplazo: Mantiene el Grupo 1 (clave y ':') y reemplaza el valor (Grupo 2) con la nueva versión entre comillas.
-            to: `$1"${newVersion}"`,
-            countMatches: true // Útil para debug
-        });
+    // 2. Parsear el JSON a un objeto JavaScript
+    const jsonObject = JSON.parse(fileContent);
 
-        // Verificar si se hicieron cambios
-        const changedFile = results.find(r => r.file === filePath && r.hasChanged);
-        if (changedFile) {
-            // console.log('DEBUG: Matches found:', changedFile.numMatches); // Descomentar para debug
-            console.log(`   ✅ Versión actualizada en: ${filePath}`);
-        } else {
-            // Si no encuentra el patrón, el archivo no se modifica.
-            console.warn(`   ⚠️ No se encontró el patrón de versión ("version": "...") en ${filePath}. El archivo no fue modificado.`);
-            // console.log('DEBUG: Results from replace-in-file:', results); // Descomentar para debug
-        }
-    } catch (error) {
-        console.error(`   ❌ Error actualizando ${filePath}:`, error);
-        throw new Error(`Failed to update version in ${filePath}`);
+    // 3. Modificar la propiedad usando el path (asumiendo path simple como 'appData.version')
+    //    Necesitamos una forma simple de acceder a la propiedad anidada.
+    const keys = jsonPath.split("."); // -> ['appData', 'version']
+    let currentLevel = jsonObject;
+
+    // Navegar hasta el penúltimo nivel
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (currentLevel[keys[i]] === undefined) {
+        throw new Error(`La clave '${keys[i]}' no existe en el JSON.`);
+      }
+      currentLevel = currentLevel[keys[i]];
     }
+
+    // Modificar la propiedad final
+    const finalKey = keys[keys.length - 1];
+    if (currentLevel[finalKey] === undefined) {
+      throw new Error(
+        `La clave final '${finalKey}' no existe en el objeto anidado.`
+      );
+    }
+    const oldVersion = currentLevel[finalKey];
+    currentLevel[finalKey] = newVersion;
+
+    // 4. Convertir el objeto modificado de vuelta a JSON (con formato)
+    //    Usamos null, 2 para mantener una indentación de 2 espacios, similar al original.
+    const updatedJsonContent = JSON.stringify(jsonObject, null, 2);
+
+    // 5. Escribir el contenido actualizado de vuelta al archivo
+    await writeFile(filePath, updatedJsonContent, "utf-8");
+
+    console.log(
+      `   ✅ Versión actualizada en ${filePath} (de ${oldVersion} a ${newVersion}).`
+    );
+  } catch (error: any) {
+    console.error(
+      `   ❌ Error actualizando ${filePath} mediante Parse/Modify:`,
+      error.message
+    );
+    // Si el error es de parseo, puede indicar JSON inválido
+    if (error instanceof SyntaxError) {
+      console.error(
+        "   -> Posible problema: El archivo no contiene JSON válido."
+      );
+    }
+    throw new Error(
+      `Failed to update version in ${filePath} using Parse/Modify.`
+    );
+  }
 }
 
 // --- Inicio del Script Principal ---
@@ -156,7 +186,9 @@ async function runProductionRelease(): Promise<void> {
     // semver.prerelease('1.0.1') devuelve null
     if (semver.prerelease(currentDevVersion)) {
       // Si tiene parte de pre-release, la quitamos para obtener la versión base
-      nextVersion = `${semver.major(currentDevVersion)}.${semver.minor(currentDevVersion)}.${semver.patch(currentDevVersion)}`;
+      nextVersion = `${semver.major(currentDevVersion)}.${semver.minor(
+        currentDevVersion
+      )}.${semver.patch(currentDevVersion)}`;
       console.log(
         `    ℹ️ Es una pre-release. Versión base extraída: ${nextVersion}`
       );
@@ -189,26 +221,40 @@ async function runProductionRelease(): Promise<void> {
     console.log(`[4/7] Preparando contenido de la rama ${releaseBranch}...`);
 
     // 4.1. Actualizar package.json (sin crear commit ni tag aquí)
-    console.log(`   [4.1] Actualizando versión en package.json a ${nextVersion}...`);
+    console.log(
+      `   [4.1] Actualizando versión en package.json a ${nextVersion}...`
+    );
     // Usamos --allow-same-version por si la versión base ya existía sin -dev
-    await runCommand(`npm version ${nextVersion} --no-git-tag-version --allow-same-version`);
+    await runCommand(
+      `npm version ${nextVersion} --no-git-tag-version --allow-same-version`
+    );
     console.log(`      ✅ package.json y package-lock.json actualizados.`);
 
     // 4.2. Actualizar archivo personalizado (ngsw-config.json)
     // Necesitas la función updateCustomFileVersion definida en el script
-    console.log(`   [4.2] Actualizando versión en archivo personalizado (${customFilePath})...`);
-    await updateCustomFileVersion(customFilePath, customFileVersionPath, nextVersion);
+    console.log(
+      `   [4.2] Actualizando versión en archivo personalizado (${customFilePath})...`
+    );
+    await updateCustomFileVersion(
+      customFilePath,
+      customFileVersionPath,
+      nextVersion
+    );
     // La función updateCustomFileVersion ya imprime su propio log de éxito/warning
 
     // 4.3. Actualizar CHANGELOG.md
     console.log(`   [4.3] Generando/Actualizando ${changelogFile}...`);
     // -p usa el preset, -i sobrescribe el mismo archivo, -s añade la entrada para la release actual
-    await runCommand(`npx conventional-changelog -p ${conventionalPreset} -i ${changelogFile} -s --pkg ./package.json`);
+    await runCommand(
+      `npx conventional-changelog -p ${conventionalPreset} -i ${changelogFile} -s --pkg ./package.json`
+    );
     console.log(`      ✅ ${changelogFile} actualizado.`);
 
     // 4.4. Staging de los cambios
     console.log(`   [4.4] Añadiendo archivos modificados al staging area...`);
-    await runCommand(`git add package.json package-lock.json ${customFilePath} ${changelogFile}`);
+    await runCommand(
+      `git add package.json package-lock.json ${customFilePath} ${changelogFile}`
+    );
     console.log(`      ✅ Archivos preparados.`);
 
     // 4.5. Crear commit de preparación en la rama release/*
