@@ -1,3 +1,7 @@
+## [1.0.9](https://github.com/seicifarre/release-config/compare/v1.0.8...v1.0.9) (2025-05-05)
+
+
+
 ## [1.0.8](https://github.com/seicifarre/release-config/compare/1.0.7...1.0.8) (2025-04-29)
 
 
