@@ -1,6 +1,6 @@
 {
   "name": "release-config",
-  "version": "1.0.10-dev.0",
+  "version": "1.0.10",
   "description": "Automatización de releases para entorno con ramas master y develop usando release-it",
   "type": "module",
   "scripts": {
