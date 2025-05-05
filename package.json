@@ -20,6 +20,7 @@
     "release-it": "19.0.1",
     "semver": "7.7.1",
     "ts-node": "^10.9.2",
-    "typescript": "5.8.3"
+    "typescript": "5.8.3",
+    "unique-names-generator": "4.7.1"
   }
 }

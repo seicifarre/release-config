@@ -11,6 +11,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import semver from "semver";
+import {
+  uniqueNamesGenerator,
+  adjectives,
+  animals
+} from "unique-names-generator";
 
 // Promisificamos ambos
 const exec = promisify(execCb);
@@ -318,8 +323,21 @@ async function runProductionRelease(): Promise<void> {
     // === STEP 6: Create Release on GitHub ===
     // The tag was already created and pushed by 'git flow release finish -p' in the previous step
     const tagName: string = `v${nextVersion}`; // We build the expected tag name
-    const releaseTitle: string = `Release ${tagName}`; // Title for the GitHub release
-    console.log(`[6/7] Creating a GitHub release for the ${tagName} tag...`);
+
+    // Title for the GitHub release
+    const releaseTitle: string = uniqueNamesGenerator({
+      // You can combine dictionaries: Adjective + Color + Animal, etc.
+      dictionaries: [adjectives, animals], // -> "Quirky Badger"
+      // dictionaries: [adjectives, colors, animals], -> "Large Red Bear"
+      // dictionaries: [starWars], // -> "Ackbar" (explore the available dictionaries!)
+      separator: " ", // Separator between words
+      style: "capital", // Capitalize each word
+      length: 2 // Number of words to generate (if you use multiple dictionaries)
+    });
+
+    console.log(
+      `[6/7] Creating a GitHub release for the ${tagName} tag (Title: ${releaseTitle})...`
+    );
 
     // We use 'gh release create'
     // - tagName: The tag we just created and pushed.
