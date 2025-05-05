@@ -244,16 +244,20 @@ async function runProductionRelease(): Promise<void> {
     // 4.3. Update CHANGELOG.md
     console.log(`   [4.3] Generating/Updating ${changelogFile}...`);
     // We use npx as the main command to run conventional-changelog
-    await runCommand("npx", [
-      "conventional-changelog",
-      "-p",
-      conventionalPreset,
-      "-i",
-      changelogFile,
-      "-s",
-      "--pkg",
-      "./package.json"
-    ]);
+    await runCommand(
+      useShell ? "npx.cmd" : "npx",
+      [
+        "conventional-changelog",
+        "-p",
+        conventionalPreset,
+        "-i",
+        changelogFile,
+        "-s",
+        "--pkg",
+        "./package.json"
+      ],
+      { useShell }
+    );
     console.log(`      ✅ ${changelogFile} updated.`);
     // 4.4. Staging
     console.log(`   [4.4] Adding modified files to the staging area...`);
