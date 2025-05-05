@@ -1,33 +1,33 @@
 #!/usr/bin/env npx ts-node
 
-import { promisify } from "node:util";
 import { execFile as execFileCb, ExecFileOptions } from "node:child_process";
-import semver from "semver";
-import path from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+import semver from "semver";
 
-const execFile = promisify(execFileCb); // Promisificamos execFile
+const execFile = promisify(execFileCb); // We promisify execFile
 
-// --- Configuración ---
+// --- Configuration ---
 const conventionalPreset: string = "angular";
 const customFilePath: string = "ngsw-config.json";
-const customFileVersionPath: string = "appData.version"; // Usado para la lógica de actualización JSON
+const customFileVersionPath: string = "appData.version"; // Used for JSON update logic
 const changelogFile: string = "CHANGELOG.md";
-// --- Fin Configuración ---
+// --- End Configuration ---
 
-// --- Función Auxiliar Refactorizada para Ejecutar Comandos ---
+// --- Refactored Helper Function to Execute Commands ---
 async function runCommand(
-  command: string, // El comando/ejecutable (ej: 'git', 'npm', 'npx')
-  args: string[] = [], // Array de argumentos
-  options: ExecFileOptions & { ignoreStderr?: boolean } = {} // Opciones para execFile
+  command: string, // The command/executable (e.g. 'git', 'npm', 'npx')
+  args: string[] = [], // Array of arguments
+  options: ExecFileOptions & { ignoreStderr?: boolean } = {} // Options for execFile
 ): Promise<string> {
-  // Logueamos de forma que sea fácil copiar/pegar en terminal si es necesario
-  const commandString = `${command} ${args.join(" ")}`;
+  // We log in so that it is easy to copy/paste into terminal if necessary
+  const commandString: string = `${command} ${args.join(" ")}`;
   console.log(`$ ${commandString}`);
   try {
     const defaultOptions = { encoding: "utf-8", ...options };
-    // Usamos execFile
+    // We use execFile
     const { stdout, stderr } = await execFile(command, args, defaultOptions);
     if (stderr && !options.ignoreStderr) {
       if (!stderr.includes("warning:") && !stderr.includes("hint:")) {
@@ -40,60 +40,60 @@ async function runCommand(
       error.stderr ||
       error.stdout ||
       (error instanceof Error ? error.message : String(error));
-    // Creamos un error más descriptivo incluyendo el comando que falló
-    const wrappedError = new Error(
+    // We create a more descriptive error including the command that failed
+    const wrappedError: Error = new Error(
       `Error executing command "${commandString}":\n${errorOutput}`
     );
     if (error instanceof Error) {
-      wrappedError.stack = error.stack; // Preservar stack trace
+      wrappedError.stack = error.stack; // Preserve stack trace
     }
     throw wrappedError;
   }
 }
 
-// Interface para package.json (sin cambios)
+// Interface for package.json
 interface PackageJson {
   version: string;
   [key: string]: any;
 }
 
-// Función Auxiliar para Actualizar Versión en Archivo Personalizado (JSON Parse/Modify - sin cambios)
+// Helper Function to Update Version in Custom File (JSON Parse/Modify)
 async function updateCustomFileVersion(
   filePath: string,
   jsonPath: string,
   newVersion: string
 ): Promise<void> {
   console.log(
-    `   🔄 Actualizando versión en ${filePath} (esperada en ${jsonPath}) a ${newVersion} [Método: Parse/Modify]...`
+    `   🔄 Updating version in ${filePath} (expected in ${jsonPath}) to ${newVersion} [Method: Parse/Modify]...`
   );
   try {
-    const fileContent = await readFile(filePath, "utf-8");
-    const jsonObject = JSON.parse(fileContent);
-    const keys = jsonPath.split(".");
-    let currentLevel = jsonObject;
+    const fileContent: string = await readFile(filePath, "utf-8");
+    const jsonObject: any = JSON.parse(fileContent);
+    const keys: string[] = jsonPath.split(".");
+    let currentLevel: any = jsonObject;
     for (let i = 0; i < keys.length - 1; i++) {
       if (currentLevel[keys[i]] === undefined)
-        throw new Error(`La clave '${keys[i]}' no existe.`);
+        throw new Error(`The key '${keys[i]}' does not exist.`);
       currentLevel = currentLevel[keys[i]];
     }
-    const finalKey = keys[keys.length - 1];
+    const finalKey: string = keys[keys.length - 1];
     if (currentLevel[finalKey] === undefined)
-      throw new Error(`La clave final '${finalKey}' no existe.`);
-    const oldVersion = currentLevel[finalKey];
+      throw new Error(`The final key '${finalKey}' does not exist.`);
+    const oldVersion: any = currentLevel[finalKey];
     currentLevel[finalKey] = newVersion;
-    const updatedJsonContent = JSON.stringify(jsonObject, null, 2);
+    const updatedJsonContent: string = JSON.stringify(jsonObject, null, 2);
     await writeFile(filePath, updatedJsonContent, "utf-8");
     console.log(
-      `   ✅ Versión actualizada en ${filePath} (de ${oldVersion} a ${newVersion}).`
+      `   ✅ Updated version in ${filePath} (from ${oldVersion} to ${newVersion}).`
     );
   } catch (error: any) {
     console.error(
-      `   ❌ Error actualizando ${filePath} mediante Parse/Modify:`,
+      `   ❌ Error updating ${filePath} using Parse/Modify:`,
       error.message
     );
     if (error instanceof SyntaxError)
       console.error(
-        "   -> Posible problema: El archivo no contiene JSON válido."
+        "   -> Possible problem: The file does not contain valid JSON."
       );
     throw new Error(
       `Failed to update version in ${filePath} using Parse/Modify.`
@@ -101,19 +101,22 @@ async function updateCustomFileVersion(
   }
 }
 
-// --- Inicio del Script Principal ---
+// --- Start of Main Script ---
 async function runProductionRelease(): Promise<void> {
-  let currentBranch = "";
-  let releaseBranch = "";
-  let nextVersion = "";
+  let currentBranch: string = "";
+  let releaseBranch: string = "";
+  let nextVersion: string = "";
 
   try {
     console.log(
-      "--- Iniciando Proceso de Release a Producción (Multiplataforma) ---"
+      "--- Starting the Production Release Process (Multiplatform) ---"
     );
 
-    // === PASO 1: Comprobaciones Previas ===
-    console.log("[1/7] Realizando comprobaciones previas...");
+    // --- Cross-platform npm command ---
+    const npmCmd: string = process.platform === "win32" ? "npm.cmd" : "npm";
+
+    // === STEP 1: Preliminary Checks ===
+    console.log("[1/7] Performing pre-checks...");
     currentBranch = await runCommand("git", [
       "rev-parse",
       "--abbrev-ref",
@@ -121,23 +124,23 @@ async function runProductionRelease(): Promise<void> {
     ]);
     const status: string = await runCommand("git", ["status", "--porcelain"]);
     if (status)
-      throw new Error("❌ Error: El directorio de trabajo no está limpio.");
+      throw new Error("❌ Error: The working directory is not clean.");
     if (currentBranch !== "develop")
       throw new Error(
-        `❌ Error: Debes estar en 'develop' (rama actual: ${currentBranch}).`
+        `❌ Error: You must be in 'develop' (current branch: ${currentBranch}).`
       );
-    console.log("    🔄 Actualizando ramas y tags...");
+    console.log("    🔄 Updating branches and tags...");
     await runCommand("git", ["pull", "origin", "develop"]);
-    await runCommand("git", ["pull", "--ff-only", "origin", "master"]); // Mantenemos --ff-only
+    await runCommand("git", ["pull", "--ff-only", "origin", "master"]); // We keep --ff-only
     await runCommand("git", ["fetch", "--tags", "origin"], {
       ignoreStderr: true
     });
-    console.log("✅ Prerrequisitos cumplidos.");
+    console.log("✅ Prerequisites met.");
 
-    // === PASO 2: Determinar Versión de Release desde Develop ===
-    console.log("[2/7] Determinando versión de release desde develop...");
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
+    // === STEP 2: Determine Release Version from Develop ===
+    console.log("[2/7] Determining release version from development...");
+    const __filename: string = fileURLToPath(import.meta.url);
+    const __dirname: string = path.dirname(__filename);
     const packageJsonPath: string = path.resolve(__dirname, "../package.json");
     let currentDevVersion: string;
     try {
@@ -148,72 +151,72 @@ async function runProductionRelease(): Promise<void> {
       const localPkg: PackageJson = JSON.parse(localPackageJsonContent);
       currentDevVersion = localPkg.version;
       console.log(
-        `    ℹ️ Versión actual en develop (package.json): ${currentDevVersion}`
+        `    ℹ️ Current version in develop (package.json): ${currentDevVersion}`
       );
     } catch (error: any) {
       throw new Error(
-        `❌ Error: No se pudo leer la versión del package.json local: ${error.message}`
+        `❌ Error: Could not read local package.json version: ${error.message}`
       );
     }
     if (!semver.valid(currentDevVersion))
       throw new Error(
-        `❌ Error: Versión ${currentDevVersion} no es SemVer válida.`
+        `❌ Error: Version ${currentDevVersion} is not a valid SemVer.`
       );
 
     if (semver.prerelease(currentDevVersion)) {
-      const hyphenIndex = currentDevVersion.indexOf("-");
+      const hyphenIndex: number = currentDevVersion.indexOf("-");
       if (hyphenIndex > 0) {
         nextVersion = currentDevVersion.substring(0, hyphenIndex);
         console.log(
-          `    ℹ️ Es una pre-release. Versión base extraída: ${nextVersion}`
+          `    ℹ️ This is a pre-release. Extracted base version: ${nextVersion}`
         );
       } else {
         throw new Error(
-          `❌ Error: Pre-release tag detectado pero no se encontró guion en ${currentDevVersion}`
+          `❌ Error: Pre-release tag detected but no script found in ${currentDevVersion}`
         );
       }
     } else {
       nextVersion = currentDevVersion;
       console.log(
-        `    ℹ️ No es una pre-release. Usando versión actual: ${nextVersion}`
+        `    ℹ️ This is not a pre-release. Using the current version: ${nextVersion}`
       );
     }
     if (!semver.valid(nextVersion))
       throw new Error(
-        `❌ Error: Versión final calculada (${nextVersion}) no es SemVer válida.`
+        `❌ Error: Calculated final version (${nextVersion}) is not valid SemVer.`
       );
-    console.log(`✅ Versión para este release de producción: ${nextVersion}`);
+    console.log(`✅ Version for this production release: ${nextVersion}`);
 
-    // === PASO 3: Iniciar Git Flow Release ===
-    console.log(`[3/7] Iniciando 'git flow release start ${nextVersion}'...`);
+    // === STEP 3: Start Git Flow Release ===
+    console.log(`[3/7] Starting 'git flow release start ${nextVersion}'...`);
     releaseBranch = `release/${nextVersion}`;
-    // Usamos 'git' como comando y ['flow', 'release', 'start', version] como argumentos
+    // We use 'git' as command and ['flow', 'release', 'start', version] as arguments
     await runCommand("git", ["flow", "release", "start", nextVersion]);
-    console.log(`✅ Rama ${releaseBranch} creada y activa.`);
+    console.log(`✅ Branch ${releaseBranch} created and active.`);
 
-    // === PASO 4: Preparar Contenido de la Rama Release ===
-    console.log(`[4/7] Preparando contenido de la rama ${releaseBranch}...`);
-    // 4.1. Actualizar package.json
+    // === STEP 4: Prepare Release Branch Content ===
+    console.log(`[4/7] Preparing content for the ${releaseBranch} branch...`);
+    // 4.1. Update package.json
     console.log(
-      `   [4.1] Actualizando versión en package.json a ${nextVersion}...`
+      `   [4.1] Updating version in package.json to ${nextVersion}...`
     );
-    await runCommand("npm", [
+    await runCommand(npmCmd, [
       "version",
       nextVersion,
       "--no-git-tag-version",
       "--allow-same-version"
     ]);
-    console.log(`      ✅ package.json y package-lock.json actualizados.`);
-    // 4.2. Actualizar archivo personalizado
-    console.log(`   [4.2] Actualizando versión en ${customFilePath}...`);
+    console.log(`      ✅ package.json and package-lock.json updated.`);
+    // 4.2. Update custom file
+    console.log(`   [4.2] Updating version on ${customFilePath}...`);
     await updateCustomFileVersion(
       customFilePath,
       customFileVersionPath,
       nextVersion
     );
-    // 4.3. Actualizar CHANGELOG.md
-    console.log(`   [4.3] Generando/Actualizando ${changelogFile}...`);
-    // Usamos npx como comando principal para ejecutar conventional-changelog
+    // 4.3. Update CHANGELOG.md
+    console.log(`   [4.3] Generating/Updating ${changelogFile}...`);
+    // We use npx as the main command to run conventional-changelog
     await runCommand("npx", [
       "conventional-changelog",
       "-p",
@@ -224,76 +227,75 @@ async function runProductionRelease(): Promise<void> {
       "--pkg",
       "./package.json"
     ]);
-    console.log(`      ✅ ${changelogFile} actualizado.`);
+    console.log(`      ✅ ${changelogFile} updated.`);
     // 4.4. Staging
-    console.log(`   [4.4] Añadiendo archivos modificados al staging area...`);
-    const filesToAdd = [
+    console.log(`   [4.4] Adding modified files to the staging area...`);
+    const filesToAdd: string[] = [
       "package.json",
       "package-lock.json",
       customFilePath,
       changelogFile
     ];
     await runCommand("git", ["add", ...filesToAdd]);
-    console.log(`      ✅ Archivos preparados.`);
+    console.log(`      ✅ Files prepared.`);
     // 4.5. Commit
-    console.log(`   [4.5] Creando commit de preparación...`);
-    const commitMessage = `chore(release): prepare release v${nextVersion}`;
+    console.log(`   [4.5] Creating staging commit...`);
+    const commitMessage: string = `chore(release): prepare release v${nextVersion}`;
     await runCommand("git", ["commit", "-m", commitMessage]);
-    console.log(`      ✅ Commit creado: ${commitMessage}`);
-    console.log(`✅ Contenido de la rama ${releaseBranch} preparado.`);
+    console.log(`      ✅ Commit created: ${commitMessage}`);
+    console.log(`✅ Contents of branch ${releaseBranch} prepared.`);
 
-    // === PASO 5: Finalizar Git Flow Release (Localmente) y Empujar Manualmente ===
+    // === STEP 5: Finalize Git Flow Release (Locally) and Push Manually ===
     console.log(
-      `[5/7] Finalizando 'git flow release finish v${nextVersion}' localmente...`
+      `[5/7] Finishing 'git flow release finish v${nextVersion}' locally...`
     );
 
-    // REINTENTO 3: Ejecutamos finish SIN -p y con el mensaje sin espacios para el tag/merge.
-    const messageNoSpaces: string = `Release_v${nextVersion}`; // Mensaje simple sin espacios
+    // We execute finish WITHOUT -p and with the message without spaces for the tag/merge.
+    const messageNoSpaces: string = `Release_v${nextVersion}`; // Simple message without spaces
 
     const finishArgs: string[] = [
       "flow",
       "release",
       "finish",
-      "-m", // Usamos -m con mensaje sin espacios
+      "-m", // We use -m with message without spaces
       messageNoSpaces,
-      // '-p', // <-- ELIMINAMOS EL FLAG -p
-      nextVersion // Pasamos versión SIN 'v'
+      nextVersion // We pass version WITHOUT 'v'
     ];
 
-    console.log(`   Ejecutando: git ${finishArgs.join(" ")}`);
-    // Ejecutamos SIN GIT_EDITOR=true, confiando en -m
+    console.log(`   Running: git ${finishArgs.join(" ")}`);
+    // We run WITHOUT GIT_EDITOR=true, relying on -m
     await runCommand("git", finishArgs);
     console.log(
-      `   ✅ Git flow release finalizado localmente (merges, tag local, borrado local de rama release).`
+      `   ✅ Git flow release finished locally (merges, local tag, local deletion of release branch).`
     );
 
-    // Ahora, hacemos push explícitamente de lo necesario: master, develop y los tags
-    console.log(`   [5.1] Empujando rama master actualizada a origin...`);
+    // Now, we explicitly push what is needed: master, develop and the tags
+    console.log(`   [5.1] Pushing updated master branch to origin...`);
     await runCommand("git", ["push", "origin", "master"]);
 
-    console.log(`   [5.2] Empujando rama develop actualizada a origin...`);
+    console.log(`   [5.2] Pushing updated develop branch to origin...`);
     await runCommand("git", ["push", "origin", "develop"]);
 
-    console.log(`   [5.3] Empujando tags a origin...`);
-    // Usamos --tags para empujar todos los tags locales que no estén en el remoto
-    // Esto incluye el tag '1.0.7' (o 'v1.0.7' si git flow lo prefijara) que se acaba de crear.
+    console.log(`   [5.3] Pushing tags to origin...`);
+    // We use --tags to push all local tags that are not on the remote
+    // This includes the newly created tag '1.0.7' (or 'v1.0.7' if git flow prefixed it).
     await runCommand("git", ["push", "--tags", "origin"]);
 
-    console.log(`✅ Ramas master, develop y tags empujados a origin.`);
-    // --- Fin del PASO 5 Modificado ---
+    console.log(`✅ Master, develop, and tag branches pushed to origin.`);
+    // --- End of STEP 5 ---
 
-    // === PASO 6: Crear Release en GitHub ===
-    // El tag ya fue creado y empujado por 'git flow release finish -p' en el paso anterior
-    const tagName = `v${nextVersion}`; // Construimos el nombre del tag esperado
-    const releaseTitle = `Release ${tagName}`; // Título para la release de GitHub
-    console.log(`[6/7] Creando Release en GitHub para el tag ${tagName}...`);
+    // === STEP 6: Create Release on GitHub ===
+    // The tag was already created and pushed by 'git flow release finish -p' in the previous step
+    const tagName: string = `v${nextVersion}`; // We build the expected tag name
+    const releaseTitle: string = `Release ${tagName}`; // Title for the GitHub release
+    console.log(`[6/7] Creating a GitHub release for the ${tagName} tag...`);
 
-    // Usamos 'gh release create'
-    // - tagName: El tag que acabamos de crear y empujar.
-    // - --title: El título de la Release en GitHub.
-    // - -F o --notes-file: Usa el contenido del CHANGELOG.md como cuerpo de la release.
-    // - No usamos --prerelease porque es una release final.
-    // - gh CLI usará la autenticación configurada (via gh auth login).
+    // We use 'gh release create'
+    // - tagName: The tag we just created and pushed.
+    // - --title: The title of the release on GitHub.
+    // - -F or --notes-file: Use the contents of CHANGELOG.md as the body of the release.
+    // - We don't use --prerelease because this is a final release.
+    // - gh CLI will use the configured authentication (via gh auth login).
     await runCommand("gh", [
       "release",
       "create",
@@ -304,63 +306,59 @@ async function runProductionRelease(): Promise<void> {
       changelogFile
     ]);
 
-    console.log(`✅ Release ${releaseTitle} creada en GitHub.`);
-    // --- Fin del PASO 6 ---
+    console.log(`✅ Release ${releaseTitle} created on GitHub.`);
+    // --- End of STEP 6 ---
 
-    // === PASO 7: Actualizar Rama Develop ===
-    console.log("[7/7] Preparando la rama develop para el siguiente ciclo...");
+    // === STEP 7: Update Develop Branch ===
+    console.log("[7/7] Preparing the develop branch for the next cycle...");
 
-    // 7.1. Asegurarse de estar en develop (git flow finish debería dejarnos aquí, pero por seguridad)
-    console.log(
-      `   [7.1] Verificando y cambiando a develop si es necesario...`
-    );
-    let finalBranch = await runCommand("git", [
+    // 7.1. Make sure you're in develop (git flow finish should leave us here, but for safety)
+    console.log(`   [7.1] Checking and switching to develop if necessary...`);
+    let finalBranch: string = await runCommand("git", [
       "rev-parse",
       "--abbrev-ref",
       "HEAD"
     ]);
     if (finalBranch !== "develop") {
       console.warn(
-        `   ⚠️ No estábamos en develop (estábamos en ${finalBranch}). Cambiando a develop...`
+        `   ⚠️ We weren't in develop (we were in ${finalBranch}). Switching to develop...`
       );
       await runCommand("git", ["checkout", "develop"]);
-      // Podríamos hacer un pull extra por si acaso, aunque git flow finish ya hizo merge
+      // We could do an extra pull just in case, although git flow finish already merged
       // await runCommand('git', ['pull', 'origin', 'develop']);
     }
-    console.log(`      ✅ En rama develop.`);
+    console.log(`      ✅ In the develop branch.`);
 
-    // 7.2. Incrementar versión a la siguiente pre-release (-dev.0)
+    // 7.2. Increase version to the next pre-release (-dev.0)
     console.log(
-      `   [7.2] Incrementando versión a la siguiente pre-release en package.json...`
+      `   [7.2] Incrementing version to the next pre-release in package.json...`
     );
-    // npm version prerelease incrementa el último número y añade -dev.0
-    // o incrementa el .N si ya existe -dev.N
-    await runCommand("npm", [
+    // npm version prerelease increments the last number and adds -dev.0
+    // or increments the .N if it already exists -dev.N
+    await runCommand(npmCmd, [
       "version",
       "prerelease",
       "--preid=dev",
       "--no-git-tag-version"
     ]);
-    // Leemos la nueva versión para usarla en el commit y la actualización del custom file
-    const nextDevVersion = JSON.parse(
+    // We read the new version to use in the commit and update of the custom file
+    const nextDevVersion: any = JSON.parse(
       await readFile(packageJsonPath, "utf-8")
     ).version;
-    console.log(`      ✅ Versión en develop actualizada a: ${nextDevVersion}`);
+    console.log(`      ✅ Development version updated to: ${nextDevVersion}`);
 
-    // 7.3. Actualizar archivo personalizado (ngsw-config.json) con la nueva versión -dev
-    console.log(`   [7.3] Actualizando versión en ${customFilePath}...`);
+    // 7.3. Update custom file (ngsw-config.json) with the new version -dev
+    console.log(`   [7.3] Updating version on ${customFilePath}...`);
     await updateCustomFileVersion(
       customFilePath,
       customFileVersionPath,
       nextDevVersion
     );
 
-    // 7.4. Hacer commit de los cambios de versión en develop
-    console.log(
-      `   [7.4] Creando commit del incremento de versión en develop...`
-    );
-    const bumpCommitMessage = `chore(develop): bump version to ${nextDevVersion}`;
-    // Añadimos package.json, package-lock.json y el archivo personalizado
+    // 7.4. Commit version changes to develop
+    console.log(`   [7.4] Creating a version increment commit in develop...`);
+    const bumpCommitMessage: string = `chore(develop): bump version to ${nextDevVersion}`;
+    // We add package.json, package-lock.json and the custom file
     await runCommand("git", [
       "add",
       "package.json",
@@ -368,32 +366,32 @@ async function runProductionRelease(): Promise<void> {
       customFilePath
     ]);
     await runCommand("git", ["commit", "-m", bumpCommitMessage]);
-    console.log(`      ✅ Commit creado: ${bumpCommitMessage}`);
+    console.log(`      ✅ Commit created: ${bumpCommitMessage}`);
 
-    // 7.5. Hacer push de develop
-    console.log(`   [7.5] Empujando rama develop actualizada a origin...`);
+    // 7.5. Push develop
+    console.log(`   [7.5] Pushing updated develop branch to origin...`);
     await runCommand("git", ["push", "origin", "develop"]);
-    console.log(`      ✅ Rama develop empujada.`);
+    console.log(`      ✅ Develop branch pushed.`);
 
-    console.log(`✅ Rama develop preparada para el siguiente ciclo.`);
-    // --- Fin del PASO 7 ---
+    console.log(`✅ Develop branch prepared for the next cycle.`);
+    // --- End of STEP 7 ---
 
-    // Mensaje final de éxito global
+    // Final message of global success
     console.log(
-      "\n--- ✅ Proceso Completo de Release a Producción Finalizado Exitosamente ---"
+      "\n--- ✅ Complete Production Release Process Successfully Completed ---"
     );
   } catch (error: unknown) {
-    // --- Bloque Catch (Sin cambios, ya maneja errores de runCommand) ---
-    console.error("\n--- ❌ Falló el Proceso de Release a Producción ---");
+    // --- Catch Block (handles runCommand errors) ---
+    console.error("\n--- ❌ The Production Release Process Failed ---");
     if (error instanceof Error) {
-      console.error("Error Original:", error.message);
+      console.error("Original Error:", error.message);
       if (error.stack) console.error("Stack Trace:", error.stack);
     } else {
-      console.error("Ocurrió un error inesperado:", error);
+      console.error("An unexpected error occurred:", error);
     }
-    console.error("\nIntentando limpiar y restaurar el estado...");
+    console.error("\nTrying to clean up and restore the state...");
     try {
-      const currentBranchNow = await runCommand("git", [
+      const currentBranchNow: string = await runCommand("git", [
         "rev-parse",
         "--abbrev-ref",
         "HEAD"
@@ -402,44 +400,42 @@ async function runProductionRelease(): Promise<void> {
         releaseBranch &&
         (currentBranchNow === releaseBranch || currentBranchNow === "develop")
       ) {
-        const branchExistsOutput = await runCommand("git", [
+        const branchExistsOutput: string = await runCommand("git", [
           "branch",
           "--list",
           releaseBranch
         ]);
-        // branchExistsOutput contendrá el nombre de la rama si existe, o estará vacío si no.
+        // branchExistsOutput will contain the name of the branch if it exists, or empty if not.
         if (branchExistsOutput.includes(releaseBranch)) {
           console.error(
-            `   Intentando borrar la rama de release ${releaseBranch}...`
+            `   Trying to delete the release branch ${releaseBranch}...`
           );
           if (currentBranch === "develop" && currentBranchNow !== "develop") {
             await runCommand("git", ["checkout", "develop"]);
           }
-          await runCommand("git", ["branch", "-D", releaseBranch]); // Forzar borrado
-          console.error(
-            `   Rama ${releaseBranch} borrada localmente (forzado).`
-          );
+          await runCommand("git", ["branch", "-D", releaseBranch]); // Force delete
+          console.error(`   Branch ${releaseBranch} deleted locally (forced).`);
         }
       }
       if (currentBranch === "develop" && currentBranchNow !== "develop") {
-        console.error(`   Volviendo a la rama ${currentBranch}...`);
+        console.error(`   Returning to the ${currentBranch} branch...`);
         await runCommand("git", ["checkout", "develop"]);
       }
-      console.error("Limpieza intentada. Revisa el estado del repositorio.");
+      console.error("Cleanup attempted. Check the status of the repository.");
     } catch (cleanupError: unknown) {
-      console.error("\n   --- ⚠️ Error durante la limpieza ---");
+      console.error("\n   --- ⚠️ Error during cleaning ---");
       if (cleanupError instanceof Error)
-        console.error("   Error de limpieza:", cleanupError.message);
+        console.error("   Cleaning error:", cleanupError.message);
       else
         console.error(
-          "   Ocurrió un error inesperado durante la limpieza:",
+          "   An unexpected error occurred during cleanup:",
           cleanupError
         );
-      console.error("   Revisa manualmente el estado del repositorio.");
+      console.error("   Manually check the status of the repository.");
     }
     process.exit(1);
   }
 }
 
-// Ejecutar el script
+// Run the script
 runProductionRelease();
