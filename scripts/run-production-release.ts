@@ -1,13 +1,20 @@
 #!/usr/bin/env npx ts-node
 
-import { execFile as execFileCb, ExecFileOptions } from "node:child_process";
+import {
+  exec as execCb,
+  execFile as execFileCb,
+  ExecFileOptions,
+  ExecOptions
+} from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import semver from "semver";
 
-const execFile = promisify(execFileCb); // We promisify execFile
+// Promisificamos ambos
+const exec = promisify(execCb);
+const execFile = promisify(execFileCb);
 
 // --- Configuration ---
 const conventionalPreset: string = "angular";
@@ -18,17 +25,39 @@ const changelogFile: string = "CHANGELOG.md";
 
 // --- Refactored Helper Function to Execute Commands ---
 async function runCommand(
-  command: string, // The command/executable (e.g. 'git', 'npm', 'npx')
-  args: string[] = [], // Array of arguments
-  options: ExecFileOptions & { ignoreStderr?: boolean } = {} // Options for execFile
+  command: string,
+  args: string[] = [],
+  options: (ExecOptions | ExecFileOptions) & {
+    ignoreStderr?: boolean;
+    useShell?: boolean;
+  } = {} // Añadimos useShell
 ): Promise<string> {
-  // We log in so that it is easy to copy/paste into terminal if necessary
-  const commandString: string = `${command} ${args.join(" ")}`;
+  const commandString =
+    args.length > 0 ? `${command} ${args.join(" ")}` : command; // Construir string para logs/errores
   console.log(`$ ${commandString}`);
+
   try {
     const defaultOptions = { encoding: "utf-8", ...options };
-    // We use execFile
-    const { stdout, stderr } = await execFile(command, args, defaultOptions);
+    let stdout: string;
+    let stderr: string | undefined;
+
+    if (options.useShell) {
+      // --- Usar exec (con shell) ---
+      // exec necesita la cadena completa del comando
+      const result = await exec(commandString, defaultOptions as ExecOptions);
+      stdout = result.stdout;
+      stderr = result.stderr;
+    } else {
+      // --- Usar execFile (sin shell) ---
+      const result = await execFile(
+        command,
+        args,
+        defaultOptions as ExecFileOptions
+      ); // Aseguramos el tipo de options
+      stdout = result.stdout;
+      stderr = result.stderr;
+    }
+
     if (stderr && !options.ignoreStderr) {
       if (!stderr.includes("warning:") && !stderr.includes("hint:")) {
         console.error("stderr:", stderr.trim());
@@ -40,12 +69,11 @@ async function runCommand(
       error.stderr ||
       error.stdout ||
       (error instanceof Error ? error.message : String(error));
-    // We create a more descriptive error including the command that failed
-    const wrappedError: Error = new Error(
-      `Error executing command "${commandString}":\n${errorOutput}`
+    const wrappedError = new Error(
+      `Error executing command ${commandString}":\n${errorOutput}`
     );
     if (error instanceof Error) {
-      wrappedError.stack = error.stack; // Preserve stack trace
+      wrappedError.stack = error.stack;
     }
     throw wrappedError;
   }
@@ -113,7 +141,7 @@ async function runProductionRelease(): Promise<void> {
     );
 
     // --- Cross-platform npm command ---
-    const npmCmd: string = process.platform === "win32" ? "npm.cmd" : "npm";
+    const useShell: boolean = process.platform === "win32";
 
     // === STEP 1: Preliminary Checks ===
     console.log("[1/7] Performing pre-checks...");
@@ -200,12 +228,11 @@ async function runProductionRelease(): Promise<void> {
     console.log(
       `   [4.1] Updating version in package.json to ${nextVersion}...`
     );
-    await runCommand(npmCmd, [
-      "version",
-      nextVersion,
-      "--no-git-tag-version",
-      "--allow-same-version"
-    ]);
+    await runCommand(
+      useShell ? "npm.cmd" : "npm",
+      ["version", nextVersion, "--no-git-tag-version", "--allow-same-version"],
+      { useShell }
+    );
     console.log(`      ✅ package.json and package-lock.json updated.`);
     // 4.2. Update custom file
     console.log(`   [4.2] Updating version on ${customFilePath}...`);
@@ -335,12 +362,11 @@ async function runProductionRelease(): Promise<void> {
     );
     // npm version prerelease increments the last number and adds -dev.0
     // or increments the .N if it already exists -dev.N
-    await runCommand(npmCmd, [
-      "version",
-      "prerelease",
-      "--preid=dev",
-      "--no-git-tag-version"
-    ]);
+    await runCommand(
+      useShell ? "npm.cmd" : "npm",
+      ["version", "prerelease", "--preid=dev", "--no-git-tag-version"],
+      { useShell }
+    );
     // We read the new version to use in the commit and update of the custom file
     const nextDevVersion: any = JSON.parse(
       await readFile(packageJsonPath, "utf-8")
